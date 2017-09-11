@@ -113,5 +113,10 @@ Logic behind summarizing all data's native contact information (implemented in t
 		- (in each frame) assigning 2'/3' structure
 		- output line states contact status
 
-4. Every time a new timestamp is found
-	- print previous frame info
+4. Every time a new timestamp is found, print the previous frame info
+
+## Native Contact Normalization
+
+TBD
+
+Wiki: [Percent Native Contact](http://folding.cnsm.csulb.edu/wiki/index.php/Percent_Native_Contact)
