@@ -132,20 +132,30 @@ sub generate_pdbs_from_logfile {
 }
 
 sub generate_all_pdbs {
-
     my @runs = `ls | grep RUN`;
     if (scalar(@runs) == 0) { return; }
 
     foreach my $run (@runs) {
         chdir($run);
 
-        my $clones = `ls | grep CLONE`;
+        my @clones = `ls | grep CLONE`;
         if (scalar(@clones) == 0) { next; }
 
         foreach my $clone (@clones) {
             `rm *.pdb *# 2> /dev/null`;
 
             my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
+            if (not -e $xtc_file) {
+                print $OUT "[INFO]  Skipped PROJ$Project/RUN$run/CLONE$clone: $xtc_file does not exist\n";
+                next;
+            }
+
+            my $pdb_file = "p${Project}_r${run}_c${clone}_f.pdb";
+
+            #TODO: Comment on what `echo 1` means
+            my $trjconv_cmd = "echo 1 | trjconv -s frame0.tpr -f $xtc_file -o $pdb_file -sep  2> /dev/null";
+            print $OUT "[INFO]  Executing `$trjconv_cmd`\n";
+            `$trjconv_cmd`;
 
             my @pdb_files = `ls | grep .pdb`;
             rename_pdbs(@pdb_files);
