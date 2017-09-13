@@ -161,7 +161,8 @@ sub rename_pdbs {
 
     foreach my $pdb (@pdbs) {
         if (!$pdb =~ m/_f_/) { next; }
-        my $new_pdb_filename = $pdb =~ s/_f_/_f/;
-        `mv $pdb $new_pdb_filename 2> /dev/null`;
+        my $new_pdb = $pdb;
+        $new_pdb =~ s/_f_/_f/;
+        `mv $pdb $new_pdb 2> /dev/null`;
     }
 }
