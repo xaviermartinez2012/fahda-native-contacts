@@ -1,1 +1,0 @@
-# ./RescaleNCPercent.pl sampleIOs/native-sims-p1796luteo-cutoff5A-rmsd_50Lines.txt 1 testOutput 
