@@ -120,5 +120,40 @@ sub generate_pdbs_from_logfile {
     close($LOG);
 }
 
-close($LOG);
-close($OUT);
+sub generate_all_pdbs {
+
+    my @runs = `ls | grep RUN`;
+    if (scalar(@runs) == 0) { return; }
+
+    foreach my $run (@runs) {
+        chdir($run);
+
+        my $clones = `ls | grep CLONE`;
+        if (scalar(@clones) == 0) { next; }
+
+        foreach my $clone (@clones) {
+            `rm *.pdb *# 2> /dev/null`;
+
+            my $xtc_file = "P${project}_R${run}_C${clone}.xtc";
+            my $gmx_trjconv_cmd =
+              "echo 1 | trjconv -s frame0.tpr -f $xtc_file -o $pdb_file -sep";    #TODO: Find out which version of GMX to use
+            `$gmx_command 2> /dev/null`;
+
+            my @pdb_files = `ls | grep .pdb`;
+            rename_pdbs(@pdb_files);
+        }
+
+        chdir("..");
+    }
+}
+
+sub rename_pdbs {
+    my (@pdbs) = @_;
+    if (scalar(@pdbs) == 0) { return; }
+
+    foreach my $pdb (@pdbs) {
+        if (!$pdb =~ m/_f_/) { next; }
+        my $new_pdb_filename = $pdb =~ s/_f_/_f/;
+        `mv $pdb $new_pdb_filename 2> /dev/null`;
+    }
+}
