@@ -51,74 +51,73 @@ GetOptions(
 );
 my $project = $ARGV[0] or die "Project number must be specified\n" . HelpMessage(1);
 
-# GLOBAL VARIABLES
-$pdbmax      = 100000000;
-$maxpdb      = 0;
-$numpdb      = 0;
-$currentpdbs = 0;
-$numlines    = 0;
-$oldrun      = -1;
-$oldclone    = -1;
+sub generate_pdbs_from_logfile {
+    my ($logfile) = @_;
 
-$usage = "\nUsage: \.\/make_FAH-PDBs_from_logfile.pl  \[Project \#\]  \[Max PDB's (optional)\]
-Run this script in the location of the F\@H PROJ\$X directories ...
-And don't forget the good old `usegromacs33` before running this script\!\n\n";
+    my $homedir = `pwd`;
+    chomp $homedir;
 
-$proj = chomp($ARGV[0]) || die "$usage\n";
-$maxpdb = $ARGV[1];
-if ($maxpdb > 0) { $pdbmax = $maxpdb; }
-$outfile = "make_FAH-PDBs_$proj.log";
-open(my $OUT, '>', $outfile);
+    my $total_pdbs_count   = 0;
+    my $current_pdbs_count = 0;
+    my $oldrun             = -1;
+    my $oldclone           = -1;
 
-# READ IN THE LOGFILE AND GO TO THE P/R/C DIRECTORY
-$homedir = `pwd`;
-chomp $homedir;
-$logfile = "/home/server/FAHdata/PKNOT/log$proj";
-open(my $LOG, '<', $logfile) || die "ERROR: An error occurred while trying to open $logfile: $!\n\n";
+    open(my $LOG, '<', $logfile) or die "ERROR: $logfile: $!\n";
+    while (defined(my $line = <$LOG>) and $total_pdbs_count <= $Max_Pdb_Count) {
+        my @values = split(/\s+/, chomp $line);
+        my $logproj = $values[0];
+        if ($logproj != $project) {
+            die "PROJ $logproj found is not the same a PROJ $project expected\!";
+        }
 
-while (defined($line = <$LOG>) && $numpdb <= $pdbmax) {
-    $numlines++;
-    for ($line) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-    @input = split(/ /, $line);
-    $logproj = $input[0];
-    if ($logproj != $proj) {
-        die "PROJ $logproj found is not the same a PROJ $proj expected\!";
-    }
-    $run   = $input[1];
-    $clone = $input[2];
-    $time  = $input[3];     # time in ps
-    $frame = $time / 100;
+        my $run   = $values[1];
+        my $clone = $values[2];
+        my $time  = $values[3];    # time in ps
+        my $frame = $time / 100;
 
-    # change directory only if the current
-    # run or clone # has changed in the log file
-    if ($run != $oldrun || $clone != $oldclone) {
-        print $OUT "$proj $run $clone\t$currentpdbs created\n";
-        $currentpdbs = 0;
-        $workdir     = "$homedir/PROJ$proj/RUN$run/CLONE$clone/";
-        chdir $workdir;
-        $test = `pwd`;
-        chomp $test;
-        print $OUT "Working on directory $test ...\n";
-        `rm *.pdb *# 2> /dev/null`;
-    }
+        # change directory only if the current run or clone # has changed in the log file
+        if ($run != $oldrun or $clone != $oldclone) {
 
-    # now make the PDB files!!!
-    $xtcfile = "P${proj}_R${run}_C$clone.xtc";
-    $pdbfile = "p${proj}_r${run}_c${clone}_f$frame.pdb";
-    if (-e $xtcfile) {
-        $command = "echo 1 1 | trjconv -s frame0.tpr -f $xtcfile -dump $time -o $pdbfile";
-        `$command 2> /dev/null`;
-        if (-e $pdbfile) {
-            $numpdb++;
-            $currentpdbs++;
+            # print informative statistics and reset PDB count
+            print $OUT "PROJ$project/RUN$run/CLONE/$clone\t$current_pdbs_count PDBs created\n";
+            $current_pdbs_count = 0;
+
+            # change to new working directory and remove all existing PDBs
+            my $workdir = "$homedir/PROJ$project/RUN$run/CLONE$clone/";
+            chdir $workdir;
+            print $OUT "Working on directory $workdir ...\n";
+
+            if ($Remove_Existing eq "true") {
+                `rm *.pdb *# 2> /dev/null`;
+            }
+        }
+
+        # now make the PDB files!
+        my $xtc_file = "P${project}_R${run}_C${clone}.xtc";
+        if (not -e $xtc_file) {
+
+            #TODO: Log the skipped RUN/CLONE
+            $oldclone = $clone;
+            $oldrun   = $run;
+            next;
+        }
+
+        my $pdb_file    = "p${project}_r${run}_c${clone}_f${frame}.pdb";
+        my $gmx_command = "echo 1 1 | trjconv -s frame0.tpr -f $xtc_file -dump $time -o $pdb_file";
+        `$gmx_command 2> /dev/null`;
+        if (-e $pdb_file) {
+            $total_pdbs_count++;
+            $current_pdbs_count++;
         }
         else {
-            print $OUT "FAILED to create new pdb file $pdbfile\n";
+            print $OUT "FAILED to create new pdb file $pdb_file\n";
         }
+
+        $oldclone = $clone;
+        $oldrun   = $run;
     }
 
-    $oldclone = $clone;
-    $oldrun   = $run;
+    close($LOG);
 }
 
 close($LOG);
