@@ -94,7 +94,7 @@ sub generate_pdbs_from_logfile {
             # change to new working directory and remove all existing PDBs
             my $workdir = "$homedir/PROJ$Project/RUN$run/CLONE$clone/";
             chdir $workdir;
-            print $OUT "Working on directory $workdir ...\n";
+            print $OUT "[INFO]  Working on directory $workdir ...\n";
 
             if ($Remove_Existing eq "true") {
                 `rm *.pdb *# 2> /dev/null`;
@@ -103,7 +103,7 @@ sub generate_pdbs_from_logfile {
 
         my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
         if (not -e $xtc_file) {
-            #TODO: Log the skipped RUN/CLONE
+            print $OUT "[INFO]  Skipped PROJ$Project/RUN$run/CLONE$clone: $xtc_file does not exist\n";
             $previous_clone = $clone;
             $previous_run   = $run;
             next;
@@ -121,7 +121,7 @@ sub generate_pdbs_from_logfile {
             $current_pdbs_count++;
         }
         else {
-            print $OUT "FAILED to create new pdb file $pdb_file\n";
+            print $OUT "[ERROR]  Failed to create $pdb_file\n";
         }
 
         $previous_clone = $clone;
