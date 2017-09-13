@@ -1,9 +1,41 @@
 #!/usr/bin/perl
 
-# ------------------------------------------------------------------------------
-# Create all properly titled F@H PDB's from log file
-# Original Author: Eric J. Sorin, written on 08/2013
-# ------------------------------------------------------------------------------
+=head1 NAME
+
+fah-pdbs-make-all.pl - generate all PDBs for a F@H project
+
+=head1 SYNOPSIS
+
+./fah-pdbs-make-all.pl  project  [--m=<number_of_max_pdb>] [--l=<log_file>] [--h]
+
+e.g. ./fah-pdbs-make-all.pl 1797 --max-pdb=1000 --logfile=../1797.log
+
+Run this script in the location of the F@H PROJ directory.
+And don't forget the good old `usegromacs33` before running this script!
+
+=over
+
+=item --logfile, -l <log_file>
+
+If specified will generate PDBs for frames listed in this file only.
+All existing PDBs are removed before new ones are generated.
+
+=item --remove-existing
+
+Used together with --logfile. If specified will remove all existing PDBs.
+This option is ignored if a log file is not specified.
+
+=item --pdbmax, -p <num>
+
+If specified will process this number <num> of PDBs only.
+
+=item --help, -h
+
+Print this help message
+
+=back
+
+=cut
 
 use strict;
 
