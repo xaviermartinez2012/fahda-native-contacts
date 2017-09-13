@@ -38,6 +38,18 @@ Print this help message
 =cut
 
 use strict;
+use warnings;
+use Getopt::Long qw(HelpMessage :config pass_through);
+
+my $Max_Pdb_Count   = 100000000;
+my $Remove_Existing = "false";
+GetOptions(
+    "logfile|l:s"     => \my $Log_File,
+    "remove-existing" => sub { $Remove_Existing = "true" },
+    "pdbmax|m:i"      => \$Max_Pdb_Count,
+    "help|h" => sub { print HelpMessage(0) }
+);
+my $project = $ARGV[0] or die "Project number must be specified\n" . HelpMessage(1);
 
 # GLOBAL VARIABLES
 $pdbmax      = 100000000;
