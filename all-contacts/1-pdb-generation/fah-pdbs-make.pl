@@ -51,6 +51,11 @@ GetOptions(
 );
 my $project = $ARGV[0] or die "Project number must be specified\n" . HelpMessage(1);
 
+open(my $OUT, '>', "make_FAH-PDBs_$project.log");
+if   (-e $Log_File) { generate_pdbs_from_logfile($Log_File); }
+else                { generate_all_pdbs(); }
+close($OUT);
+
 sub generate_pdbs_from_logfile {
     my ($logfile) = @_;
 
