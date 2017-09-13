@@ -13,6 +13,9 @@ e.g. ./fah-pdbs-make-all.pl 1797 --max-pdb=1000 --logfile=../1797.log
 Run this script in the location of the F@H PROJ directory.
 And don't forget the good old `usegromacs33` before running this script!
 
+Additionally overwrite aminoacids.dat with aminoacids-NA.dat so that Gromacs
+tools can recognize RNA molecules.
+
 =over
 
 =item --logfile, -l <log_file>
@@ -27,11 +30,11 @@ This option is ignored if a log file is not specified.
 
 =item --pdbmax, -p <num>
 
-If specified will process this number <num> of PDBs only.
+If specified will process this number <num> of PDBs only. Default to 100,000,000.
 
 =item --help, -h
 
-Print this help message
+Print this help message.
 
 =back
 
