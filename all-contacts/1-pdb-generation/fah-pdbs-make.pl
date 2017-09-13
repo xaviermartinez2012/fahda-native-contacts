@@ -52,9 +52,9 @@ GetOptions(
     "pdbmax|m:i"      => \$Max_Pdb_Count,
     "help|h" => sub { print HelpMessage(0) }
 );
-my $project = $ARGV[0] or die "Project number must be specified\n" . HelpMessage(1);
+my $Project = $ARGV[0] or die "[FATAL]  Project number must be specified\n" . HelpMessage(1);
 
-open(my $OUT, '>', "make_FAH-PDBs_$project.log");
+open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
 if   (-e $Log_File) { generate_pdbs_from_logfile($Log_File); }
 else                { generate_all_pdbs(); }
 close($OUT);
@@ -67,15 +67,16 @@ sub generate_pdbs_from_logfile {
 
     my $total_pdbs_count   = 0;
     my $current_pdbs_count = 0;
-    my $oldrun             = -1;
-    my $oldclone           = -1;
+    my $previous_run       = -1;
+    my $previous_clone     = -1;
 
-    open(my $LOG, '<', $logfile) or die "ERROR: $logfile: $!\n";
-    while (defined(my $line = <$LOG>) and $total_pdbs_count <= $Max_Pdb_Count) {
+    open(my $LOGFILE, '<', $logfile) or die "[FATAL]  $logfile: $!\n"; close($LOGFILE)
+    while (defined(my $line = <$LOGFILE>) and $total_pdbs_count <= $Max_Pdb_Count) {
         my @values = split(/\s+/, chomp $line);
+
         my $logproj = $values[0];
-        if ($logproj != $project) {
-            die "PROJ $logproj found is not the same a PROJ $project expected\!";
+        if ($logproj != $Project) {
+            die "[FATAL]  Project $logproj found in $logfile is not the same as the expected PROJ$Project\!";
         }
 
         my $run   = $values[1];
@@ -84,14 +85,14 @@ sub generate_pdbs_from_logfile {
         my $frame = $time / 100;
 
         # change directory only if the current run or clone # has changed in the log file
-        if ($run != $oldrun or $clone != $oldclone) {
+        if ($run != $previous_run or $clone != $previous_clone) {
 
             # print informative statistics and reset PDB count
-            print $OUT "PROJ$project/RUN$run/CLONE/$clone\t$current_pdbs_count PDBs created\n";
+            print $OUT "PROJ$Project/RUN$run/CLONE/$clone\t$current_pdbs_count PDBs created\n";
             $current_pdbs_count = 0;
 
             # change to new working directory and remove all existing PDBs
-            my $workdir = "$homedir/PROJ$project/RUN$run/CLONE$clone/";
+            my $workdir = "$homedir/PROJ$Project/RUN$run/CLONE$clone/";
             chdir $workdir;
             print $OUT "Working on directory $workdir ...\n";
 
@@ -100,19 +101,21 @@ sub generate_pdbs_from_logfile {
             }
         }
 
-        # now make the PDB files!
-        my $xtc_file = "P${project}_R${run}_C${clone}.xtc";
+        my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
         if (not -e $xtc_file) {
-
             #TODO: Log the skipped RUN/CLONE
-            $oldclone = $clone;
-            $oldrun   = $run;
+            $previous_clone = $clone;
+            $previous_run   = $run;
             next;
         }
 
-        my $pdb_file    = "p${project}_r${run}_c${clone}_f${frame}.pdb";
-        my $gmx_command = "echo 1 1 | trjconv -s frame0.tpr -f $xtc_file -dump $time -o $pdb_file";
-        `$gmx_command 2> /dev/null`;
+        my $pdb_file = "p${Project}_r${run}_c${clone}_f${frame}.pdb";
+
+        #TODO: Comment on what `echo 1 1` is for
+        my $trjconv_cmd = "echo 1 1 | trjconv -s frame0.tpr -f $xtc_file -dump $time -o $pdb_file  2> /dev/null";
+        print $OUT "Executing `$trjconv_cmd`\n";
+        `$trjconv_cmd`;
+
         if (-e $pdb_file) {
             $total_pdbs_count++;
             $current_pdbs_count++;
@@ -121,11 +124,11 @@ sub generate_pdbs_from_logfile {
             print $OUT "FAILED to create new pdb file $pdb_file\n";
         }
 
-        $oldclone = $clone;
-        $oldrun   = $run;
+        $previous_clone = $clone;
+        $previous_run   = $run;
     }
 
-    close($LOG);
+    close($LOGFILE);
 }
 
 sub generate_all_pdbs {
@@ -142,10 +145,7 @@ sub generate_all_pdbs {
         foreach my $clone (@clones) {
             `rm *.pdb *# 2> /dev/null`;
 
-            my $xtc_file = "P${project}_R${run}_C${clone}.xtc";
-            my $gmx_trjconv_cmd =
-              "echo 1 | trjconv -s frame0.tpr -f $xtc_file -o $pdb_file -sep";    #TODO: Find out which version of GMX to use
-            `$gmx_command 2> /dev/null`;
+            my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
 
             my @pdb_files = `ls | grep .pdb`;
             rename_pdbs(@pdb_files);
