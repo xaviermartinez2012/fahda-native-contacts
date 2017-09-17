@@ -5,18 +5,22 @@ use warnings;
 use Getopt::Long qw(HelpMessage :config pass_through);
 
 my $Max_Pdb_Count   = 100000000;
-my $Remove_Existing = "false";
+my $Remove_Existing = 0;
+my $Is_Dry_Run      = 0;
 
 GetOptions(
     "logfile|l:s"     => \my $Log_File,
-    "remove-existing" => sub { $Remove_Existing = "true" },
+    "remove-existing" => sub { $Remove_Existing = 1 },
     "pdbmax|m:i"      => \$Max_Pdb_Count,
+    "dry-run"         => sub { $Is_Dry_Run = 1 },
     "help|h" => sub { print HelpMessage(0) }
 );
 
 my $Project = $ARGV[0] or die "[FATAL]  Project number must be specified\n";
 
 open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
+
+if ($Is_Dry_Run) { print $OUT "Executing in dry-run mode\n"; }
 
 if   (defined $Log_File && -e $Log_File) { generate_pdbs_from_logfile($Log_File); }
 else                                     { generate_all_pdbs(); }
@@ -59,7 +63,7 @@ sub generate_pdbs_from_logfile {
             chdir $workdir;
             print $OUT "[INFO]  Working on directory $workdir ...\n";
 
-            if ($Remove_Existing eq "true") {
+            if (!$Is_Dry_Run && $Remove_Existing) {
                 `rm *.pdb *# 2> /dev/null`;
             }
         }
@@ -76,14 +80,14 @@ sub generate_pdbs_from_logfile {
 
         #TODO: Comment on what `echo 1 1` is for
         my $trjconv_cmd = "echo 1 1 | trjconv -s frame0.tpr -f $xtc_file -dump $time -o $pdb_file  2> /dev/null";
-        print $OUT "Executing `$trjconv_cmd`\n";
-        `$trjconv_cmd`;
+        print $OUT "[INFO]  Executing `$trjconv_cmd`\n";
+        if (!$Is_Dry_Run) { `$trjconv_cmd`; }
 
         if (-e $pdb_file) {
             $total_pdbs_count++;
             $current_pdbs_count++;
         }
-        else {
+        elsif (!$Is_Dry_Run) {
             print $OUT "[ERROR]  Failed to create $pdb_file\n";
         }
 
@@ -105,7 +109,7 @@ sub generate_all_pdbs {
         if (scalar(@clones) == 0) { next; }
 
         foreach my $clone (@clones) {
-            `rm *.pdb *# 2> /dev/null`;
+            if (!$Is_Dry_Run) { `rm *.pdb *# 2> /dev/null`; }
 
             my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
             if (not -e $xtc_file) {
@@ -118,10 +122,12 @@ sub generate_all_pdbs {
             #TODO: Comment on what `echo 1` means
             my $trjconv_cmd = "echo 1 | trjconv -s frame0.tpr -f $xtc_file -o $pdb_file -sep  2> /dev/null";
             print $OUT "[INFO]  Executing `$trjconv_cmd`\n";
-            `$trjconv_cmd`;
+            if (!$Is_Dry_Run) {
+                `$trjconv_cmd`;
+                my @pdb_files = `ls | grep .pdb\$`;
+                rename_pdbs(@pdb_files);
+            }
 
-            my @pdb_files = `ls | grep .pdb`;
-            rename_pdbs(@pdb_files);
         }
 
         chdir("..");
@@ -168,6 +174,10 @@ All existing PDBs are removed before new ones are generated.
 
 Used together with --logfile. If specified will remove all existing PDBs.
 This option is ignored if a log file is not specified.
+
+=item --dry-run
+
+When specified, no files would be created/modified.
 
 =item --pdbmax, -p <num>
 
