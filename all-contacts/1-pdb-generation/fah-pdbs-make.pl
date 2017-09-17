@@ -64,7 +64,7 @@ sub generate_pdbs_from_logfile {
 
         my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
         if (not -e $xtc_file) {
-            print $OUT "[INFO]  Skipped PROJ$Project/RUN$run/CLONE$clone: $xtc_file does not exist\n";
+            print $OUT "[WARN]  Skipped PROJ$Project/RUN$run/CLONE$clone: $xtc_file does not exist\n";
             $previous_clone = $clone;
             $previous_run   = $run;
             next;
