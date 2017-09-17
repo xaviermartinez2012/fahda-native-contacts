@@ -99,16 +99,26 @@ sub generate_pdbs_from_logfile {
 }
 
 sub generate_all_pdbs {
-    my @runs = `ls | grep RUN`;
-    if (scalar(@runs) == 0) { return; }
+    chomp(my $cwd = `pwd`);
 
-    foreach my $run (@runs) {
-        chdir($run);
+    my @run_dirs = get_dirs($cwd, "^RUN\\d+\$");
+    if (scalar(@runs) == 0) {
+        print $OUT "[INFO]  No RUN found\n";
+        return;
+    }
 
-        my @clones = `ls | grep CLONE`;
-        if (scalar(@clones) == 0) { next; }
+    foreach my $run_dir (@run_dirs) {
+        chdir $run_dir;
 
-        foreach my $clone (@clones) {
+        my @clone_dirs = get_dirs("$cwd/$run_dir", "^CLONE\\d+\$");
+        if (scalar(@clone_dirs) == 0) {
+            print $OUT "No CLONE found in $run_dir\n";
+            next;
+        }
+
+        foreach my $clone_dir (@clone_dirs) {
+            chdir $clone_dir;
+
             if (!$Is_Dry_Run) { `rm *.pdb *# 2> /dev/null`; }
 
             my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
@@ -128,9 +138,24 @@ sub generate_all_pdbs {
                 rename_pdbs(@pdb_files);
             }
 
+            chdir "..";
         }
 
-        chdir("..");
+        chdir "..";
+    }
+}
+
+sub get_dirs {
+    my ($root, $match_pattern) = @_;
+    if (not -d $root) { return; }
+    if ($root !~ m/\/$/) { $root .= "/"; }
+
+    opendir(my $ROOT_HANDLE, $root);
+    my @dirs = grep { -d "$root$_" && /$pattern/ } readdir($ROOT_HANDLE);
+    closedir($ROOT_HANDLE);
+
+    return @dirs;
+}
     }
 }
 
