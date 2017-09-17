@@ -121,13 +121,15 @@ sub generate_all_pdbs {
 
             if (!$Is_Dry_Run) { `rm *.pdb *# 2> /dev/null`; }
 
-            my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
-            if (not -e $xtc_file) {
-                print $OUT "[INFO]  Skipped PROJ$Project/RUN$run/CLONE$clone: $xtc_file does not exist\n";
+            my $xtc_file = get_xtc_file($run_dir, $clone_dir);
+            if (not defined $xtc_file or not -e $xtc_file) {
+                print $OUT "[INFO]  Skipped PROJ$Project/$run/$clone: $xtc_file does not exist\n";
                 next;
             }
 
-            my $pdb_file = "p${Project}_r${run}_c${clone}_f.pdb";
+            my ($run_number, $clone_number) = get_run_clone_numbers_from_xtc_filename($xtc_file);
+
+            my $pdb_file = "p${Project}_r${run_number}_c${clone_number}_f.pdb";
 
             #TODO: Comment on what `echo 1` means
             my $trjconv_cmd = "echo 1 | trjconv -s frame0.tpr -f $xtc_file -o $pdb_file -sep  2> /dev/null";
@@ -156,7 +158,46 @@ sub get_dirs {
 
     return @dirs;
 }
+
+sub get_xtc_file {
+    my ($run, $clone) = @_;
+    $run =~ s/^RUN//;
+    $clone =~ s/^CLONE//;
+
+    my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
+    if (-e $xtc_file) {
+        return $xtc_file;
     }
+
+    my @xtc_files = `ls | grep .xtc\$`;
+
+    if (scalar(@xtc_files) == 0) {
+        print $OUT "[WARNING]  No XTC file found\n";
+        return;
+    }
+
+    if (scalar(@xtc_files) > 1) {
+        print $OUT "[WARNING]  More than one XTC file found; using the first one\n";
+        $xtc_file = $xtc_files[0];
+        return $xtc_file;
+    }
+
+    $xtc_file = $xtc_files[0];
+    return $xtc_file;
+}
+
+sub get_run_clone_numbers_from_xtc_filename {
+    my ($xtc_filename) = @_;
+    $xtc_filename =~ s/\.xtc$//;
+    my @filename_parts = split(/_/, $xtc_filename);
+
+    my $run_number = $filename_parts[1];
+    $run_number =~ s/R//;
+
+    my $clone_number = $filename_parts[2];
+    $clone_number =~ s/C//;
+
+    return ($run_part, $clone_part);
 }
 
 sub rename_pdbs {
