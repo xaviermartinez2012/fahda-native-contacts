@@ -1,57 +1,19 @@
 #!/usr/bin/perl
 
-=head1 NAME
-
-fah-pdbs-make-all.pl - generate all PDBs for a F@H project
-
-=head1 SYNOPSIS
-
-./fah-pdbs-make-all.pl  project  [--m=<number_of_max_pdb>] [--l=<log_file>] [--h]
-
-e.g. ./fah-pdbs-make-all.pl 1797 --max-pdb=1000 --logfile=../1797.log
-
-Run this script in the location of the F@H PROJ directory.
-And don't forget the good old `usegromacs33` before running this script!
-
-Additionally overwrite aminoacids.dat with aminoacids-NA.dat so that Gromacs
-tools can recognize RNA molecules.
-
-=over
-
-=item --logfile, -l <log_file>
-
-If specified will generate PDBs for frames listed in this file only.
-All existing PDBs are removed before new ones are generated.
-
-=item --remove-existing
-
-Used together with --logfile. If specified will remove all existing PDBs.
-This option is ignored if a log file is not specified.
-
-=item --pdbmax, -p <num>
-
-If specified will process this number <num> of PDBs only. Default to 100,000,000.
-
-=item --help, -h
-
-Print this help message.
-
-=back
-
-=cut
-
 use strict;
 use warnings;
 use Getopt::Long qw(HelpMessage :config pass_through);
 
 my $Max_Pdb_Count   = 100000000;
 my $Remove_Existing = "false";
+
 GetOptions(
     "logfile|l:s"     => \my $Log_File,
     "remove-existing" => sub { $Remove_Existing = "true" },
     "pdbmax|m:i"      => \$Max_Pdb_Count,
     "help|h" => sub { print HelpMessage(0) }
 );
+
 my $Project = $ARGV[0] or die "[FATAL]  Project number must be specified\n" . HelpMessage(1);
 
 open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
@@ -62,8 +24,7 @@ close($OUT);
 sub generate_pdbs_from_logfile {
     my ($logfile) = @_;
 
-    my $homedir = `pwd`;
-    chomp $homedir;
+    chomp(my $homedir = `pwd`);
 
     my $total_pdbs_count   = 0;
     my $current_pdbs_count = 0;
@@ -176,3 +137,43 @@ sub rename_pdbs {
         `mv $pdb $new_pdb 2> /dev/null`;
     }
 }
+
+=head1 NAME
+
+./fah-pdbs-make.pl - generate all PDBs for a F@H project
+
+=head1 SYNOPSIS
+
+./fah-pdbs-make.pl  project  [--m=<number_of_max_pdb>] [--l=<log_file>] [--h]
+
+e.g. ./fah-pdbs-make.pl 1797 --max-pdb=1000 --logfile=../1797.log
+
+Run this script in the location of the F@H PROJ directory.
+And don't forget the good old `usegromacs33` before running this script!
+
+Additionally overwrite aminoacids.dat with aminoacids-NA.dat so that Gromacs
+tools can recognize RNA molecules.
+
+=over
+
+=item --logfile, -l <log_file>
+
+If specified will generate PDBs for frames listed in this file only.
+All existing PDBs are removed before new ones are generated.
+
+=item --remove-existing
+
+Used together with --logfile. If specified will remove all existing PDBs.
+This option is ignored if a log file is not specified.
+
+=item --pdbmax, -p <num>
+
+If specified will process this number <num> of PDBs only. Default to 100,000,000.
+
+=item --help, -h
+
+Print this help message.
+
+=back
+
+=cut
