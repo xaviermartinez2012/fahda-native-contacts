@@ -14,7 +14,7 @@ GetOptions(
     "help|h" => sub { print HelpMessage(0) }
 );
 
-my $Project = $ARGV[0] or die "[FATAL]  Project number must be specified\n" . HelpMessage(1);
+my $Project = $ARGV[0] or die "[FATAL]  Project number must be specified\n";
 
 open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
 if   (-e $Log_File) { generate_pdbs_from_logfile($Log_File); }
