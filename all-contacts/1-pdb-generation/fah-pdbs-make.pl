@@ -178,11 +178,11 @@ sub get_xtc_file {
 
     if (scalar(@xtc_files) > 1) {
         print $OUT "[WARNING]  More than one XTC file found; using the first one\n";
-        $xtc_file = $xtc_files[0];
+        chomp($xtc_file = $xtc_files[0]);
         return $xtc_file;
     }
 
-    $xtc_file = $xtc_files[0];
+    chomp($xtc_file = $xtc_files[0]);
     return $xtc_file;
 }
 
