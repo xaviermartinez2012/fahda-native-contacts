@@ -17,8 +17,10 @@ GetOptions(
 my $Project = $ARGV[0] or die "[FATAL]  Project number must be specified\n";
 
 open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
-if   (-e $Log_File) { generate_pdbs_from_logfile($Log_File); }
-else                { generate_all_pdbs(); }
+
+if   (defined $Log_File && -e $Log_File) { generate_pdbs_from_logfile($Log_File); }
+else                                     { generate_all_pdbs(); }
+
 close($OUT);
 
 sub generate_pdbs_from_logfile {
