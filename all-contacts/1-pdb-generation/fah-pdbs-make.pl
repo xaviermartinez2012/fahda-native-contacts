@@ -131,6 +131,7 @@ sub rename_pdbs {
     if (scalar(@pdbs) == 0) { return; }
 
     foreach my $pdb (@pdbs) {
+        chomp $pdb;
         if (!$pdb =~ m/_f_/) { next; }
         my $new_pdb = $pdb;
         $new_pdb =~ s/_f_/_f/;
