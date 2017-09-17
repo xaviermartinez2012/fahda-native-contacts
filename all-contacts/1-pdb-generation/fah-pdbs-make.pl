@@ -102,7 +102,7 @@ sub generate_all_pdbs {
     chomp(my $cwd = `pwd`);
 
     my @run_dirs = get_dirs($cwd, "^RUN\\d+\$");
-    if (scalar(@runs) == 0) {
+    if (scalar(@run_dirs) == 0) {
         print $OUT "[INFO]  No RUN found\n";
         return;
     }
@@ -123,7 +123,7 @@ sub generate_all_pdbs {
 
             my $xtc_file = get_xtc_file($run_dir, $clone_dir);
             if (not defined $xtc_file or not -e $xtc_file) {
-                print $OUT "[INFO]  Skipped PROJ$Project/$run/$clone: $xtc_file does not exist\n";
+                print $OUT "[INFO]  Skipped PROJ$Project/$run_dir/$clone_dir: $xtc_file does not exist\n";
                 next;
             }
 
@@ -153,7 +153,7 @@ sub get_dirs {
     if ($root !~ m/\/$/) { $root .= "/"; }
 
     opendir(my $ROOT_HANDLE, $root);
-    my @dirs = grep { -d "$root$_" && /$pattern/ } readdir($ROOT_HANDLE);
+    my @dirs = grep { -d "$root$_" && /$match_pattern/ } readdir($ROOT_HANDLE);
     closedir($ROOT_HANDLE);
 
     return @dirs;
@@ -197,7 +197,7 @@ sub get_run_clone_numbers_from_xtc_filename {
     my $clone_number = $filename_parts[2];
     $clone_number =~ s/C//;
 
-    return ($run_part, $clone_part);
+    return ($run_number, $clone_number);
 }
 
 sub rename_pdbs {
