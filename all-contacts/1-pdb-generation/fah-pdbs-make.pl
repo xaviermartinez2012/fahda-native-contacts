@@ -16,7 +16,10 @@ GetOptions(
     "help|h" => sub { print HelpMessage(0) }
 );
 
-my $Project = $ARGV[0] or die "[FATAL]  Project number must be specified\n";
+my $Project_Dir = $ARGV[0] or die "[FATAL]  Project directory must be specified\n";
+$Project_Dir =~ s/\/$//;    # Remove trailing slash if any
+my $Project = $Project_Dir;
+$Project =~ s/^PROJ//;      # Remove leading 'PROJ'
 
 open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
 
@@ -59,7 +62,7 @@ sub generate_pdbs_from_logfile {
             $current_pdbs_count = 0;
 
             # change to new working directory and remove all existing PDBs
-            my $workdir = "$homedir/PROJ$Project/RUN$run/CLONE$clone/";
+            my $workdir = "$homedir/$Project_Dir/RUN$run/CLONE$clone/";
             chdir $workdir;
             print $OUT "[INFO]  Working on directory $workdir ...\n";
 
@@ -100,6 +103,7 @@ sub generate_pdbs_from_logfile {
 
 sub generate_all_pdbs {
     chomp(my $cwd = `pwd`);
+    chdir $Project_Dir;
 
     my @run_dirs = get_dirs($cwd, "^RUN\\d+\$");
     if (scalar(@run_dirs) == 0) {
@@ -219,12 +223,12 @@ sub rename_pdbs {
 
 =head1 SYNOPSIS
 
-./fah-pdbs-make.pl  project  [--m=<number_of_max_pdb>] [--l=<log_file>] [--h]
+./fah-pdbs-make.pl  project_dir  [--m=<number_of_max_pdb>] [--l=<log_file>] [--h]
 
-e.g. ./fah-pdbs-make.pl 1797 --max-pdb=1000 --logfile=../1797.log
+e.g. ./fah-pdbs-make.pl PROJ1797 --max-pdb=1000 --logfile=../1797.log
 
-Run this script in the location of the F@H PROJ directory.
-And don't forget the good old `usegromacs33` before running this script!
+Run this script in the same location as the PROJ* directories.
+And don't forget the good old `usegromacs33` before running the script!
 
 Additionally overwrite aminoacids.dat with aminoacids-NA.dat so that Gromacs
 tools can recognize RNA molecules.
