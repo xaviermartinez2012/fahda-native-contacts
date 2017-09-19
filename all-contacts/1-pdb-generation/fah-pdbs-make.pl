@@ -23,7 +23,7 @@ $Project =~ s/^PROJ//;      # Remove leading 'PROJ'
 
 open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
 
-if ($Is_Dry_Run) { print $OUT "Executing in dry-run mode\n"; }
+if ($Is_Dry_Run) { print $OUT "[INFO]  Executing in dry-run mode\n"; }
 
 if   (defined $Log_File && -e $Log_File) { generate_pdbs_from_logfile($Log_File); }
 else                                     { generate_all_pdbs(); }
@@ -58,7 +58,7 @@ sub generate_pdbs_from_logfile {
         if ($run != $previous_run or $clone != $previous_clone) {
 
             # print informative statistics and reset PDB count
-            print $OUT "PROJ$Project/RUN$run/CLONE/$clone\t$current_pdbs_count PDBs created\n";
+            print $OUT "[INFO]  PROJ$Project/RUN$run/CLONE$clone\t$current_pdbs_count PDBs created\n";
             $current_pdbs_count = 0;
 
             # change to new working directory and remove all existing PDBs
@@ -176,12 +176,12 @@ sub get_xtc_file {
     my @xtc_files = `ls | grep .xtc\$`;
 
     if (scalar(@xtc_files) == 0) {
-        print $OUT "[WARNING]  No XTC file found\n";
+        print $OUT "[WARN]  No XTC file found\n";
         return;
     }
 
     if (scalar(@xtc_files) > 1) {
-        print $OUT "[WARNING]  More than one XTC file found; using the first one\n";
+        print $OUT "[WARN]  More than one XTC file found; using the first one\n";
         chomp($xtc_file = $xtc_files[0]);
         return $xtc_file;
     }
