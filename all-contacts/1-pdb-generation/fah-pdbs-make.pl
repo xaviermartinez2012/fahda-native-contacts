@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use Cwd;
 use Getopt::Long qw(HelpMessage :config pass_through);
 
 my $Max_Pdb_Count   = 100000000;
@@ -33,7 +34,7 @@ close($OUT);
 sub generate_pdbs_from_logfile {
     my ($logfile) = @_;
 
-    chomp(my $homedir = `pwd`);
+    my $homedir = getcwd();
 
     my $total_pdbs_count   = 0;
     my $current_pdbs_count = 0;
@@ -71,7 +72,7 @@ sub generate_pdbs_from_logfile {
             }
         }
 
-        my $xtc_file = get_xtc_file($run, $clone);
+        my $xtc_file = get_xtc_file($Project, $run, $clone);
         if (not -e $xtc_file) {
             print $OUT "[WARN]  Skipped PROJ$Project/RUN$run/CLONE$clone: $xtc_file does not exist\n";
             $previous_clone = $clone;
@@ -102,8 +103,8 @@ sub generate_pdbs_from_logfile {
 }
 
 sub generate_all_pdbs {
-    chomp(my $cwd = `pwd`);
     chdir $Project_Dir;
+    my $cwd = getcwd();
 
     my @run_dirs = get_dirs($cwd, "^RUN\\d+\$");
     if (scalar(@run_dirs) == 0) {
@@ -125,7 +126,7 @@ sub generate_all_pdbs {
 
             if (!$Is_Dry_Run) { `rm *.pdb *# 2> /dev/null`; }
 
-            my $xtc_file = get_xtc_file($run_dir, $clone_dir);
+            my $xtc_file = get_xtc_file($Project, $run_dir, $clone_dir);
             if (not defined $xtc_file or not -e $xtc_file) {
                 print $OUT "[INFO]  Skipped PROJ$Project/$run_dir/$clone_dir: $xtc_file does not exist\n";
                 next;
@@ -140,8 +141,7 @@ sub generate_all_pdbs {
             print $OUT "[INFO]  Executing `$trjconv_cmd`\n";
             if (!$Is_Dry_Run) {
                 `$trjconv_cmd`;
-                my @pdb_files = `ls | grep .pdb\$`;
-                rename_pdbs(@pdb_files);
+                rename_pdbs_in_cwd();
             }
 
             chdir "..";
@@ -164,16 +164,17 @@ sub get_dirs {
 }
 
 sub get_xtc_file {
-    my ($run, $clone) = @_;
+    my ($project, $run, $clone) = @_;
     $run =~ s/^RUN//;
     $clone =~ s/^CLONE//;
 
-    my $xtc_file = "P${Project}_R${run}_C${clone}.xtc";
-    if (-e $xtc_file) {
-        return $xtc_file;
-    }
+    my $xtc_file = "P${project}_R${run}_C${clone}.xtc";
+    if (-e $xtc_file) { return $xtc_file; }
 
-    my @xtc_files = `ls | grep .xtc\$`;
+    my $cwd = getcwd();
+    opendir(my $CWD, $cwd);
+    my @xtc_files = grep { /\.xtc$/ } readdir($CWD);
+    closedir($CWD);
 
     if (scalar(@xtc_files) == 0) {
         print $OUT "[WARN]  No XTC file found\n";
@@ -204,8 +205,11 @@ sub get_run_clone_numbers_from_xtc_filename {
     return ($run_number, $clone_number);
 }
 
-sub rename_pdbs {
-    my (@pdbs) = @_;
+sub rename_pdbs_in_cwd {
+    my $cwd = getcwd();
+    opendir(my $CWD, $cwd);
+    my @pdbs = grep { /\.pdb$/ } readdir($CWD);
+    closedir($CWD);
     if (scalar(@pdbs) == 0) { return; }
 
     foreach my $pdb (@pdbs) {
