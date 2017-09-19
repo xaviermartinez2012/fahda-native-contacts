@@ -43,7 +43,7 @@ sub generate_pdbs_from_logfile {
 
     open(my $LOGFILE, '<', $logfile) or die "[FATAL]  $logfile: $!\n";
     while (defined(my $line = <$LOGFILE>) and $total_pdbs_count <= $Max_Pdb_Count) {
-        my @values = split(/\s+/, chomp $line);
+        chomp(my @values = split(/\s+/, $line));
 
         my $logproj = $values[0];
         if ($logproj != $Project) {
