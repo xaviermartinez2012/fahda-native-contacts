@@ -1,98 +1,141 @@
 #! /usr/bin/perl
 
-# ------------------------------------------------------------------------------
-# Check that all F@H PDB's from logfile were properly created
-# Original Author: Eric J. Sorin
-# Date 08/2013
-# ------------------------------------------------------------------------------
+#TODO: Specify optional Log_Filename
+#TODO: Implement check_all_pdbs()
+#TODO: Specify optional rerun log filename
 
 use strict;
+use warnings;
+use Cwd;
+use Getopt::Long qw(HelpMessage :config pass_through);
 
-# GLOBAL VARIABLES
-$pdbmax      = 100000000;
-$maxpdb      = 0;
-$numpdb      = 0;
-$currentpdbs = 0;
-$numlines    = 0;
-$oldrun      = -1;
-$oldclone    = -1;
+GetOptions(
+    "logfile|l:s" => \my $Log_File,
+    "help|h"      => sub { print HelpMessage(0) }
+);
 
-$usage =
-"\nUsage: \.\/check_FAH-PDBs_from_logfile.pl  \[Project \#\]  \[Max PDB's (optional)\]
-Run this script in the location of the F\@H PROJ\$X directories ...
-After running, grep resulting log file for WRONG, ZERO, and NOT to look for bad/missing PDB's\n\n";
+my $Project_Dir = $ARGV[0] or die "[FATAL]  Project directory must be specified\n";
+$Project_Dir =~ s/\/$//;    # Remove trailing slash if any
+my $Project = $Project_Dir;
+$Project =~ s/^PROJ//;      # Remove leading 'PROJ'
 
-$proj = chomp $ARGV[0] || die "$usage\n";
+my $outfile = "check_FAH-PDBs_$Project.log";
+open(my $OUT, '>', $outfile);
 
-$maxpdb = chomp $ARGV[1];
-if ($maxpdb > 0) { $pdbmax = $maxpdb; }
+if   (defined $Log_File && -e $Log_File) { check_specific_pdbs($Log_File); }
+else                                     { check_all_pdbs(); }
 
-$outfile = "check_FAH-PDBs_$proj.log";
-open($OUT, '>', $outfile);
+close($OUT);
 
-# READ IN THE LOGFILE AND GO TO THE P/R/C DIRECTORY
-# ------------------------------------------------------------------------------
-$homedir = `pwd`;
-chomp $homedir;
-$logfile = "/home/server/FAHdata/PKNOT/log$proj";
+sub check_specific_pdbs {
+    my ($logfile) = @_;
+    open(my $LOG, '<', $logfile) or die "[FATAL]  $logfile: $!\n";
 
-open($LOG, '<', $logfile)
-  || die "ERROR: An error occurred while trying to open $logfile: $!\n\n";
+    my $homedir        = getcwd();
+    my $previous_run   = -1;
+    my $previous_clone = -1;
 
-while (defined(my $line = <$LOG>) && $numpdb <= $pdbmax) {
-    $numlines++;
-    for ($line) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-    @input = split(/ /, $line);
-    $logproj = $input[0];
+    while (defined(my $line = <$LOG>)) {
+        chomp(my @values = split(/\s+/, $line));
+        my ($logproj, $run, $clone, $time) = @values;
 
-    if ($logproj != $proj) {
-        die "PROJ $logproj found is not the same a PROJ $proj expected\!";
-    }
-
-    $run   = $input[1];
-    $clone = $input[2];
-    $time  = $input[3];     # time in ps
-    $frame = $time / 100;
-
-    # change directory only if the current
-    # run or clone # has chenged in the log file
-    if ($run != $oldrun || $clone != $oldclone) {
-        $currentpdbs = 0;
-        $workdir     = "$homedir/PROJ$proj/RUN$run/CLONE$clone/";
-        chdir $workdir;
-    }
-
-    # Check for correctly written PDB file
-    # look for wrong time stamps and zero filesize
-    $pdbfile = "p$proj" . "_r$run" . "_c$clone" . "_f$frame" . ".pdb";
-    $numpdb++;
-    if (-e $pdbfile) {
-        $size = `wc $pdbfile`;
-        chomp $size;
-        for ($size) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-        @sizearray = split(/ /, $size);
-        $pdbsize = @sizearray[0];
-        if ($pdbsize == 0) {
-            print $OUT "$pdbfile of ZERO size ($numpdb) ... ";
+        if ($logproj != $Project) {
+            die "[FATAL]  PROJ $logproj found is not the same as the expected PROJ$Project!";
         }
-        $timeline = `head $pdbfile | grep TITLE`;
-        chomp $timeline;
-        for ($timeline) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-        @timetest = split(/ /, $line);
-        $pdbtime = @timetest[3];
-        if ($pdbtime == $time) {
-            print $OUT "$pdbfile created successfully ($numpdb)\n";
+
+        # change directory only if the current
+        # run or clone # has chenged in the log file
+        if ($run != $previous_run || $clone != $previous_clone) {
+            chdir "$homedir/PROJ$Project/RUN$run/CLONE$clone/";
         }
-        else {
-            print $OUT "$pdbfile WRONG TIME ($numpdb)\n";
-        }
+
+        my $frame = $time / 100;    # time in ps
+        my $pdbfile = "p${Project}_r${run}_c${clone}_f${frame}.pdb";
+
+        my $pdb_check_result = check_pdb($pdbfile);
+        print $OUT "$pdb_check_result\n";
+
+        $previous_clone = $clone;
+        $previous_run   = $run;
     }
-    else {
-        print $OUT "$pdbfile NOT CREATED ($numpdb)\n";
-    }
-    $oldclone = $clone;
-    $oldrun   = $run;
+
+    close($LOG);
 }
 
-close($LOG);
-close($OUT);
+sub check_pdb {
+
+    # Check for correctly written PDB file
+    # by looking for wrong time stamps and zero filesize
+
+    my ($pdbfile, $expected_time) = @_;
+    if (not -e $pdbfile) {
+        return "$pdbfile was NOT created";
+    }
+
+    my $pdbsize = get_filesize($pdbfile);
+    if ($pdbsize == 0) {
+        return "$pdbfile of ZERO size";
+    }
+
+    my $pdbtime = get_time_from_pdb_content($pdbfile);
+    if ($pdbtime != $expected_time) {
+        return "$pdbfile has the WRONG time";
+    }
+
+    return "$pdbfile created successfully!";
+}
+
+sub check_all_pdbs {
+    die "to be implemented";
+}
+
+sub get_filesize {
+    my ($pdb_filename) = @_;
+    return -e $pdb_filename;
+}
+
+sub get_time_from_pdb_content {
+    my ($pdb_filename) = @_;
+    chomp(my $title_line = `head $pdb_filename | grep TITLE`);
+    chomp(my @values = split(/\s+/, $title_line));
+    my $pdbtime = $values[3];
+    return $pdbtime;
+}
+
+sub get_time_from_pdb_filename {
+    my ($pdb_filename) = @_;
+    $pdb_filename =~ s/\.pdb//;
+    chomp(my @filename_parts = split(/_f/, $pdb_filename));
+    my $time_in_ps = $filename_parts[1] * 100;
+    return $time_in_ps;
+}
+
+=head1 NAME
+
+fah-pdbs-check.pl - check the integrity of the PDBs
+
+=head1 SYNOPSIS
+
+TBD
+
+./fah-pdbs-check.pl  <project_dir>
+
+./fah-pdbs-check.pl  <project_dir> --logfile=<log_file>
+
+Run this script in the location of the F@H PROJ* directories.
+After running, grep resulting log file for "WRONG", "ZERO", and
+"NOT" to look for bad or missing PDBs.
+
+=over
+
+=item --logfile, -l <log_file>
+
+TBD
+
+=item -h, --help
+
+Print this help message.
+
+=back
+
+=cut
