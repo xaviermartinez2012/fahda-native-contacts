@@ -25,16 +25,14 @@ $Project =~ s/^PROJ//;      # Remove leading 'PROJ'
 open(my $OUT, '>', "make_FAH-PDBs_$Project.log");
 
 if ($Is_Dry_Run) { print $OUT "[INFO]  Executing in dry-run mode\n"; }
-
-if   (defined $Log_File && -e $Log_File) { generate_pdbs_from_logfile($Log_File); }
-else                                     { generate_all_pdbs(); }
+my $Path_To_Project_Dir = "${\getcwd()}/$Project_Dir";
+if (defined $Log_File && -e $Log_File) { generate_pdbs_from_logfile($Path_To_Project_Dir, $Log_File); }
+else                                   { generate_all_pdbs($Path_To_Project_Dir); }
 
 close($OUT);
 
 sub generate_pdbs_from_logfile {
-    my ($logfile) = @_;
-
-    my $homedir = getcwd();
+    my ($path_to_project_dir, $logfile) = @_;
 
     my $total_pdbs_count   = 0;
     my $current_pdbs_count = 0;
@@ -55,6 +53,8 @@ sub generate_pdbs_from_logfile {
         my $time  = $values[3];    # time in ps
         my $frame = $time / 100;
 
+        my $workdir = "$path_to_project_dir/RUN$run/CLONE$clone/";
+
         # change directory only if the current run or clone # has changed in the log file
         if ($run != $previous_run or $clone != $previous_clone) {
 
@@ -62,8 +62,6 @@ sub generate_pdbs_from_logfile {
             print $OUT "[INFO]  PROJ$Project/RUN$run/CLONE$clone\t$current_pdbs_count PDBs created\n";
             $current_pdbs_count = 0;
 
-            # change to new working directory and remove all existing PDBs
-            my $workdir = "$homedir/$Project_Dir/RUN$run/CLONE$clone/";
             chdir $workdir;
             print $OUT "[INFO]  Working on directory $workdir ...\n";
 
@@ -72,7 +70,7 @@ sub generate_pdbs_from_logfile {
             }
         }
 
-        my $xtc_file = get_xtc_file($Project, $run, $clone);
+        my $xtc_file = get_xtc_file($workdir, $Project, $run, $clone);
         if (not -e $xtc_file) {
             print $OUT "[WARN]  Skipped PROJ$Project/RUN$run/CLONE$clone: $xtc_file does not exist\n";
             $previous_clone = $clone;
@@ -103,10 +101,10 @@ sub generate_pdbs_from_logfile {
 }
 
 sub generate_all_pdbs {
-    chdir $Project_Dir;
-    my $cwd = getcwd();
+    my ($path_to_project_dir) = @_;
+    chdir($path_to_project_dir);
 
-    my @run_dirs = get_dirs($cwd, "^RUN\\d+\$");
+    my @run_dirs = get_dirs($path_to_project_dir, "^RUN\\d+\$");
     if (scalar(@run_dirs) == 0) {
         print $OUT "[INFO]  No RUN found\n";
         return;
@@ -115,7 +113,7 @@ sub generate_all_pdbs {
     foreach my $run_dir (@run_dirs) {
         chdir $run_dir;
 
-        my @clone_dirs = get_dirs("$cwd/$run_dir", "^CLONE\\d+\$");
+        my @clone_dirs = get_dirs("$path_to_project_dir/$run_dir", "^CLONE\\d+\$");
         if (scalar(@clone_dirs) == 0) {
             print $OUT "No CLONE found in $run_dir\n";
             next;
@@ -125,8 +123,8 @@ sub generate_all_pdbs {
             chdir $clone_dir;
 
             if (!$Is_Dry_Run) { `rm *.pdb *# 2> /dev/null`; }
-
-            my $xtc_file = get_xtc_file($Project, $run_dir, $clone_dir);
+            my $path_to_clone_dir = "$path_to_project_dir/$run_dir/$clone_dir";
+            my $xtc_file = get_xtc_file($path_to_clone_dir, $Project, $run_dir, $clone_dir);
             if (not defined $xtc_file or not -e $xtc_file) {
                 print $OUT "[INFO]  Skipped PROJ$Project/$run_dir/$clone_dir: $xtc_file does not exist\n";
                 next;
@@ -141,7 +139,7 @@ sub generate_all_pdbs {
             print $OUT "[INFO]  Executing `$trjconv_cmd`\n";
             if (!$Is_Dry_Run) {
                 `$trjconv_cmd`;
-                rename_pdbs_in_cwd();
+                rename_pdbs($path_to_clone_dir);
             }
 
             chdir "..";
@@ -164,14 +162,14 @@ sub get_dirs {
 }
 
 sub get_xtc_file {
-    my ($project, $run, $clone) = @_;
+    my ($cwd, $project, $run, $clone) = @_;
+
     $run =~ s/^RUN//;
     $clone =~ s/^CLONE//;
 
     my $xtc_file = "P${project}_R${run}_C${clone}.xtc";
     if (-e $xtc_file) { return $xtc_file; }
 
-    my $cwd = getcwd();
     opendir(my $CWD, $cwd);
     my @xtc_files = grep { /\.xtc$/ } readdir($CWD);
     closedir($CWD);
@@ -205,8 +203,8 @@ sub get_run_clone_numbers_from_xtc_filename {
     return ($run_number, $clone_number);
 }
 
-sub rename_pdbs_in_cwd {
-    my $cwd = getcwd();
+sub rename_pdbs {
+    my ($cwd) = @_;
     opendir(my $CWD, $cwd);
     my @pdbs = grep { /\.pdb$/ } readdir($CWD);
     closedir($CWD);
