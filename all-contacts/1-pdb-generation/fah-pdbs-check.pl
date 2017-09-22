@@ -22,16 +22,16 @@ $Project =~ s/^PROJ//;      # Remove leading 'PROJ'
 my $outfile = "check_FAH-PDBs_$Project.log";
 open(my $OUT, '>', $outfile);
 
-if   (defined $Log_File && -e $Log_File) { check_specific_pdbs($Log_File); }
 else                                     { check_all_pdbs(); }
+my $Path_To_Project_Dir = "${\getcwd()}/$Project_Dir";
+if (defined $Log_File && -e $Log_File) { check_pdbs_from_logfile($Path_To_Project_Dir, $Log_File); }
 
 close($OUT);
 
-sub check_specific_pdbs {
-    my ($logfile) = @_;
+sub check_pdbs_from_logfile {
+    my ($path_to_project_dir, $logfile) = @_;
     open(my $LOG, '<', $logfile) or die "[FATAL]  $logfile: $!\n";
 
-    my $homedir        = getcwd();
     my $previous_run   = -1;
     my $previous_clone = -1;
 
@@ -44,9 +44,9 @@ sub check_specific_pdbs {
         }
 
         # change directory only if the current
-        # run or clone # has chenged in the log file
+        # run or clone # has changed in the log file
         if ($run != $previous_run || $clone != $previous_clone) {
-            chdir "$homedir/PROJ$Project/RUN$run/CLONE$clone/";
+            chdir "$path_to_project_dir/RUN$run/CLONE$clone/";
         }
 
         my $frame = $time / 100;    # time in ps
