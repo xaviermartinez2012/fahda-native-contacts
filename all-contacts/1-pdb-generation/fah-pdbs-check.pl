@@ -1,7 +1,5 @@
-#! /usr/bin/perl
+#!/usr/bin/perl
 
-#TODO: Specify optional Log_Filename
-#TODO: Implement check_all_pdbs()
 #TODO: Specify optional rerun log filename
 
 use strict;
@@ -22,9 +20,9 @@ $Project =~ s/^PROJ//;      # Remove leading 'PROJ'
 my $outfile = "check_FAH-PDBs_$Project.log";
 open(my $OUT, '>', $outfile);
 
-else                                     { check_all_pdbs(); }
 my $Path_To_Project_Dir = "${\getcwd()}/$Project_Dir";
 if (defined $Log_File && -e $Log_File) { check_pdbs_from_logfile($Path_To_Project_Dir, $Log_File); }
+else                                   { check_all_pdbs($Path_To_Project_Dir); }
 
 close($OUT);
 
@@ -49,7 +47,7 @@ sub check_pdbs_from_logfile {
             chdir "$path_to_project_dir/RUN$run/CLONE$clone/";
         }
 
-        my $frame = $time / 100;    # time in ps
+        my $frame   = $time / 100;                                     # time in ps
         my $pdbfile = "p${Project}_r${run}_c${clone}_f${frame}.pdb";
 
         my $pdb_check_result = check_pdb($pdbfile);
@@ -60,6 +58,64 @@ sub check_pdbs_from_logfile {
     }
 
     close($LOG);
+}
+
+sub check_all_pdbs {
+    my ($path_to_project_dir) = @_;
+    chdir($path_to_project_dir);
+
+    my @run_dirs = get_dirs($path_to_project_dir, "^RUN\\d+\$");
+    if (scalar(@run_dirs) == 0) {
+        print $OUT "[INFO]  No RUN found\n";
+        return;
+    }
+
+    foreach my $run_dir (@run_dirs) {
+        chdir $run_dir;
+
+        my @clone_dirs = get_dirs("$path_to_project_dir/$run_dir", "^CLONE\\d+\$");
+        if (scalar(@clone_dirs) == 0) {
+            print $OUT "[INFO]  No CLONE found in $run_dir\n";
+            next;
+        }
+
+        foreach my $clone_dir (@clone_dirs) {
+            chdir $clone_dir;
+            check_pdbs("$path_to_project_dir/$run_dir/$clone_dir");
+            chdir "..";
+        }
+
+        chdir "..";
+    }
+}
+
+sub get_dirs {
+    my ($root, $match_pattern) = @_;
+    if (not -d $root) { return; }
+    if ($root !~ m/\/$/) { $root .= "/"; }
+
+    opendir(my $ROOT_HANDLE, $root);
+    my @dirs = grep { -d "$root$_" && /$match_pattern/ } readdir($ROOT_HANDLE);
+    closedir($ROOT_HANDLE);
+
+    return @dirs;
+}
+
+sub check_pdbs {
+    my ($cwd) = @_;
+
+    opendir(my $CWD, $cwd);
+    my @pdbs = grep { /\.pdb/i } readdir($CWD);
+    closedir($CWD);
+
+    if   (scalar(@pdbs) == 0) { print $OUT "[INFO]  No PDB found in $cwd\n"; }
+    else                      { print $OUT "[INFO]  Found ${\scalar(@pdbs)} PDBs in $cwd\n"; }
+
+    foreach my $pdb (@pdbs) {
+        my $expected_time = get_time_from_pdb_filename($pdb);
+        my $pdb_check_result = check_pdb($pdb, $expected_time);
+        print $OUT "$pdb_check_result\n";
+    }
 }
 
 sub check_pdb {
