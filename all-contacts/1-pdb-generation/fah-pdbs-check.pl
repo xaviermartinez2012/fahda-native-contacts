@@ -67,26 +67,22 @@ sub check_pdb {
     # Check for correctly written PDB file
     # by looking for wrong time stamps and zero filesize
 
-    my ($pdbfile, $expected_time) = @_;
-    if (not -e $pdbfile) {
-        return "$pdbfile was NOT created";
+    my ($pdb_filename, $expected_time) = @_;
+    if (not -e $pdb_filename) {
+        return "$pdb_filename was NOT created";
     }
 
-    my $pdbsize = get_filesize($pdbfile);
+    my $pdbsize = get_filesize($pdb_filename);
     if ($pdbsize == 0) {
-        return "$pdbfile of ZERO size";
+        return "$pdb_filename of ZERO size";
     }
 
-    my $pdbtime = get_time_from_pdb_content($pdbfile);
-    if ($pdbtime != $expected_time) {
-        return "$pdbfile has the WRONG time";
+    my $pdb_time_from_content = get_time_from_pdb_content($pdb_filename);
+    if ($pdb_time_from_content != $expected_time) {
+        return "$pdb_filename has the WRONG time";
     }
 
-    return "$pdbfile created successfully!";
-}
-
-sub check_all_pdbs {
-    die "to be implemented";
+    return "$pdb_filename created successfully!";
 }
 
 sub get_filesize {
