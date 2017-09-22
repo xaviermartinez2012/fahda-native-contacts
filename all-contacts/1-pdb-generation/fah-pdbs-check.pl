@@ -91,22 +91,24 @@ sub check_all_pdbs {
 
 sub get_filesize {
     my ($pdb_filename) = @_;
-    return -e $pdb_filename;
+    my $filesize = -s $pdb_filename;
+    return int($filesize);
 }
 
 sub get_time_from_pdb_content {
     my ($pdb_filename) = @_;
+
     chomp(my $title_line = `head $pdb_filename | grep TITLE`);
     chomp(my @values = split(/\s+/, $title_line));
-    my $pdbtime = $values[3];
-    return $pdbtime;
+    my $time_in_ps = int($values[3]);
+    return $time_in_ps;
 }
 
 sub get_time_from_pdb_filename {
     my ($pdb_filename) = @_;
     $pdb_filename =~ s/\.pdb//;
     chomp(my @filename_parts = split(/_f/, $pdb_filename));
-    my $time_in_ps = $filename_parts[1] * 100;
+    my $time_in_ps = int($filename_parts[1]) * 100;
     return $time_in_ps;
 }
 
