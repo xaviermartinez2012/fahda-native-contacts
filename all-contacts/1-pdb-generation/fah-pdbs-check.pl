@@ -159,7 +159,7 @@ fah-pdbs-check.pl - check the integrity of the PDBs
 
 =head1 SYNOPSIS
 
-TBD
+./fah-pdbs-check.pl  -h
 
 ./fah-pdbs-check.pl  <project_dir>
 
@@ -173,7 +173,8 @@ After running, grep resulting log file for "WRONG", "ZERO", and
 
 =item --logfile, -l <log_file>
 
-TBD
+Path to an input logfile. When specified only check the PDBs whose project,
+run, clone, and time (ps) listed in the logfile.
 
 =item -h, --help
 

@@ -178,14 +178,18 @@ sub rename_pdbs {
 
 =head1 SYNOPSIS
 
-./fah-pdbs-make.pl  project_dir  [--m=<number_of_max_pdb>] [--l=<log_file>] [--h]
+./fah-pdbs-make.pl -h
 
-e.g. ./fah-pdbs-make.pl PROJ1797 --max-pdb=1000 --logfile=../1797.log
+./fah-pdbs-make.pl  <project_dir>
+
+./fah-pdbs-make.pl --l=<log_file>
+
+./fah-pdbs-make.pl --l=<log_file> --m=<number_of_max_pdb>
 
 Run this script in the same location as the PROJ* directories.
-And don't forget the good old `usegromacs33` before running the script!
+And don't forget the good old C<usegromacs33> (or similar) before running the script!
 
-Additionally overwrite aminoacids.dat with aminoacids-NA.dat so that Gromacs
+Additionally overwrite F<aminoacids.dat> with F<aminoacids-NA.dat> so that Gromacs
 tools can recognize RNA molecules.
 
 =over
