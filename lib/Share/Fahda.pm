@@ -1,14 +1,15 @@
 package Share::Fahda;
 
-use English;
-use List::Util qw(first);
 use strict;
 use warnings;
+
+use English;
+use List::Util qw(first max);
 
 require Exporter;
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(get_xtc_file get_prc_from_clone_path get_prc_from_filename);
+our @EXPORT_OK = qw(get_xtc_file get_prc_from_clone_path get_prc_from_filename get_max_dir_number);
 
 sub get_xtc_file {
     my ($clone_path) = @_;
@@ -55,6 +56,17 @@ sub get_prc_from_filename {
     my ($clone_number)   = (defined $clone_field)   ? ($clone_field =~ /d\+$/)     : undef;
 
     return ($project_number, $run_number, $clone_number);
+}
+
+sub get_max_dir_number {
+    my (@dirs) = @_;
+    my @dir_numbers = ();
+    foreach my $dir (@dirs) {
+        my $dir_number = $dir;
+        $dir_number =~ s/^\D+//;
+        push(@dir_numbers, int($dir_number));
+    }
+    return max(@dir_numbers);
 }
 
 42;
