@@ -4,8 +4,12 @@ use strict;
 use warnings;
 
 use Cwd;
+use FindBin qw($Bin);
 use Getopt::Long qw(HelpMessage :config pass_through);
+use lib "$Bin/lib";
 use List::Util qw(max);
+use Share::DirUtil qw(get_dirs);
+use Share::Fahda qw(get_xtc_file get_max_dir_number);
 
 GetOptions("help|h" => sub { print HelpMessage(0) });
 
@@ -13,19 +17,18 @@ my $Project_Dir     = $ARGV[0] or die "[FATAL]  Project directory must be specif
 my $Output_Filename = $ARGV[1] or die "[FATAL]  Output filename must be specified\n";
 
 $Project_Dir =~ s/\/$//;    # Remove trailing slash if any
-my $Project_Number = $Project_Dir;
-$Project_Number =~ s/^PROJ//;    # Remove leading 'PROJ'
+my ($Project_Number) = $Project_Dir =~ m/(\d+$)/;
 
-my $Path_To_Project_Dir = "${\getcwd()}/$Project_Dir";
+my $Project_Path = "${\getcwd()}/$Project_Dir";
 $Output_Filename = "${\getcwd()}/$Output_Filename";
-generate_logfile($Path_To_Project_Dir, $Project_Number);
+generate_logfile($Project_Path, $Project_Number);
 
 sub generate_logfile {
-    my ($path_to_project_dir, $project_number) = @_;
+    my ($project_path, $project_number) = @_;
 
-    chdir($path_to_project_dir);
+    chdir($project_path);
 
-    my @run_dirs = get_dirs($path_to_project_dir, "^RUN\\d+\$");
+    my @run_dirs = get_dirs($project_path, '^RUN\d+$');
     if (scalar(@run_dirs) == 0) {
         print STDOUT "[INFO]  No RUN found\n";
         return;
@@ -37,7 +40,7 @@ sub generate_logfile {
 
         chdir $run_dir;
 
-        my @clone_dirs = get_dirs("$path_to_project_dir/$run_dir", "^CLONE\\d+\$");
+        my @clone_dirs = get_dirs("$project_path/$run_dir", '^CLONE\d+$');
         if (scalar(@clone_dirs) == 0) {
             print STDOUT "[INFO]  No CLONE found in $run_dir\n";
             next;
@@ -49,10 +52,14 @@ sub generate_logfile {
 
             chdir $clone_dir;
 
-            my $path_to_clone_dir = "$path_to_project_dir/$run_dir/$clone_dir";
-            my $xtc_file          = get_xtc_file($cwd, $project_number, $run_number, $clone_number);
-            my $all_frames_pdb    = generate_all_frames_pdb($xtc_file);
-            my $log_string        = parse_all_frames_pdb($all_frames_pdb, $project_number, $run_number, $clone_number);
+            my $clone_path = "$project_path/$run_dir/$clone_dir";
+            my $xtc_file   = get_xtc_file($clone_path);
+            if (not defined $xtc_file || not -e $xtc_file) {
+                print STDOUT "[WARN]  Skipped--XTC file $xtc_file not found\n";
+                next;
+            }
+            my $all_frames_pdb = generate_all_frames_pdb($xtc_file);
+            my $log_string = parse_all_frames_pdb($all_frames_pdb, $project_number, $run_number, $clone_number);
 
             open(my $OUT, ">>", $Output_Filename) or die "[FATAL]  $Output_Filename: $!\n";
             print $OUT $log_string;
@@ -64,55 +71,6 @@ sub generate_logfile {
         chdir "..";
     }
 
-}
-
-sub get_dirs {
-    my ($root, $match_pattern) = @_;
-    if (not -d $root) { return; }
-    if ($root !~ m/\/$/) { $root .= "/"; }
-
-    opendir(my $ROOT_HANDLE, $root);
-    my @dirs = grep { -d "$root$_" && /$match_pattern/ } readdir($ROOT_HANDLE);
-    closedir($ROOT_HANDLE);
-
-    return @dirs;
-}
-
-sub get_max_dir_number {
-    my (@dirs) = @_;
-    my @dir_numbers = ();
-    foreach my $dir (@dirs) {
-        my $dir_number = $dir;
-        $dir_number =~ s/^\D+//;
-        push(@dir_numbers, int($dir_number));
-    }
-    return max(@dir_numbers);
-}
-
-sub get_xtc_file {
-    my ($cwd, $project_number, $run_number, $clone_number) = @_;
-
-    my $xtc_file = "P${project_number}_R${run_number}_C${clone_number}.xtc";
-    if (-e $xtc_file) { return $xtc_file; }
-
-    opendir(my $CWD, $cwd);
-    my @xtc_files = grep { /\.xtc$/ } readdir($CWD);
-    closedir($CWD);
-
-    if (scalar(@xtc_files) == 0) {
-        print STDOUT "[WARN]  No XTC file found\n";
-        return;
-    }
-
-    if (scalar(@xtc_files) > 1) {
-        print STDOUT "[WARN]  More than one XTC file found; ";
-        chomp($xtc_file = $xtc_files[0]);
-        print STDOUT "using the first one: $xtc_file\n";
-        return $xtc_file;
-    }
-
-    chomp($xtc_file = $xtc_files[0]);
-    return $xtc_file;
 }
 
 sub generate_all_frames_pdb {
@@ -133,13 +91,13 @@ sub generate_all_frames_pdb {
 sub parse_all_frames_pdb {
     my ($all_frames_pdb, $project_number, $run_number, $clone_number) = @_;
 
-    open(my $ALL_FRAME_PDB, '<', $all_frames_pdb) or die "[FATAL]  $all_frames_pdb: $!";
+    open(my $ALL_FRAME_PDB, '<', $all_frames_pdb) or die "[FATAL]  $all_frames_pdb: $!\n";
     my $log_string = "";
     while (my $line = <$ALL_FRAME_PDB>) {
         if ($line !~ m/^TITLE/) { next; }
         chomp(my @values = split(/t=\s/, $line));
-        my $time = int($values[1]);
-        $log_string = $log_string . sprintf("%5d    %3d    %3d    %6d\n", $project_number, $run_number, $clone_number, $time);
+        my $time_in_ps = int($values[1]);
+        $log_string .= sprintf("%4d    %3d    %3d    %6d\n", $project_number, $run_number, $clone_number, $time_in_ps);
     }
     close($ALL_FRAME_PDB);
     return $log_string;
@@ -147,14 +105,12 @@ sub parse_all_frames_pdb {
 
 =head1 NAME
 
-fah-logfile-make.pl - Make F@H logfile
+logfile-make.pl - Make F@H logfile
 
 =head1 SYNOPSIS
 
-./fah-logfile-make.pl <project_dir> <output.log>
+logfile-make.pl <project_dir> <output.log>
 
-./fah-logfile-make.pl PROJ1797 aquifex_PROJ1797.log
-
-This script generates the F@H logfile.
+Generates the F@H logfile.
 
 =cut
