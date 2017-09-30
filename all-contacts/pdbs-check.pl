@@ -2,14 +2,16 @@
 
 #TODO: Specify optional rerun log filename
 
+use strict;
+use warnings;
+
 use Cwd;
+use English;
 use FindBin qw($Bin);
 use Getopt::Long qw(HelpMessage :config pass_through);
 use lib "$Bin/../lib";
 use Share::DirUtil qw(get_dirs);
-use strict;
-use warnings;
-use English;
+use Share::FileUtil;
 
 GetOptions(
     "logfile|l:s" => \my $Log_File,
@@ -119,13 +121,8 @@ sub check_pdb {
     # by looking for wrong time stamps and zero filesize
 
     my ($pdb_filename, $expected_time) = @_;
-    if (not -e $pdb_filename) {
-        return "$pdb_filename was NOT created";
-    }
-
-    my $pdbsize = int(-s $pdb_filename);
-    if ($pdbsize == 0) {
-        return "$pdb_filename of ZERO size";
+    if (!Share::FileUtil::file_ok($pdb_filename)) {
+        return $Share::FileUtil::File_Ok_Message;
     }
 
     my $pdb_time_from_content = get_time_from_pdb_content($pdb_filename);
@@ -140,8 +137,8 @@ sub get_time_from_pdb_content {
     my ($pdb_filename) = @_;
 
     chomp(my $title_line = `head $pdb_filename | grep TITLE`);
-    chomp(my @fields = split(/\b\s+\b/, $title_line));
-    my $time_in_ps = int($fields[3]);
+    chomp(my @fields = split(/t=/, $title_line));
+    my $time_in_ps = int($fields[1]);
     return $time_in_ps;
 }
 
