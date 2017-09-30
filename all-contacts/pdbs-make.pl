@@ -3,8 +3,8 @@
 use Cwd;
 use FindBin qw($Bin);
 use Getopt::Long qw(HelpMessage :config pass_through);
-use lib "$Bin/../../lib";
-use Share::DirFinder qw(get_dirs);
+use lib "$Bin/../lib";
+use Share::DirUtil qw(get_dirs);
 use Share::Fahda qw(get_xtc_file);
 use strict;
 use warnings;
