@@ -1,4 +1,4 @@
-package Share::DirFinder;
+package Share::DirUtil;
 
 use strict;
 use warnings;
@@ -19,4 +19,4 @@ sub get_dirs {
     return @dirs;
 }
 
-1;
+42;

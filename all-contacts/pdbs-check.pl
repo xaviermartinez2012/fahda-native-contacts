@@ -6,7 +6,7 @@ use Cwd;
 use FindBin qw($Bin);
 use Getopt::Long qw(HelpMessage :config pass_through);
 use lib "$Bin/../../lib";
-use Share::DirFinder qw(get_dirs);
+use Share::DirUtil qw(get_dirs);
 use strict;
 use warnings;
 use English;
