@@ -155,15 +155,15 @@ sub get_time_from_pdb_filename {
 
 =head1 NAME
 
-fah-pdbs-check.pl - check the integrity of the PDBs
+pdbs-check.pl - check the integrity of the PDBs
 
 =head1 SYNOPSIS
 
-./fah-pdbs-check.pl  -h
+pdbs-check.pl  -h
 
-./fah-pdbs-check.pl  <project_dir>
+pdbs-check.pl  <project_dir>
 
-./fah-pdbs-check.pl  <project_dir> --logfile=<log_file>
+pdbs-check.pl  <project_dir> --logfile=<log_file>
 
 Run this script in the location of the F@H PROJ* directories.
 After running, grep resulting log file for "WRONG", "ZERO", and

@@ -174,17 +174,17 @@ sub rename_pdbs {
 
 =head1 NAME
 
-./fah-pdbs-make.pl - generate all PDBs for a F@H project
+pdbs-make.pl - generate all PDBs for a F@H project
 
 =head1 SYNOPSIS
 
-./fah-pdbs-make.pl -h
+pdbs-make.pl -h
 
-./fah-pdbs-make.pl  <project_dir>
+pdbs-make.pl  <project_dir>
 
-./fah-pdbs-make.pl --l=<log_file>
+pdbs-make.pl --l=<log_file>
 
-./fah-pdbs-make.pl --l=<log_file> --m=<number_of_max_pdb>
+pdbs-make.pl --l=<log_file> --m=<number_of_max_pdb>
 
 Run this script in the same location as the PROJ* directories.
 And don't forget the good old C<usegromacs33> (or similar) before running the script!
