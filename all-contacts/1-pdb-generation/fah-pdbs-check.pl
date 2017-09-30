@@ -2,10 +2,14 @@
 
 #TODO: Specify optional rerun log filename
 
+use Cwd;
+use FindBin qw($Bin);
+use Getopt::Long qw(HelpMessage :config pass_through);
+use lib "$Bin/../../lib";
+use Share::DirFinder qw(get_dirs);
 use strict;
 use warnings;
-use Cwd;
-use Getopt::Long qw(HelpMessage :config pass_through);
+use English;
 
 GetOptions(
     "logfile|l:s" => \my $Log_File,
@@ -14,74 +18,77 @@ GetOptions(
 
 my $Project_Dir = $ARGV[0] or die "[FATAL]  Project directory must be specified\n";
 $Project_Dir =~ s/\/$//;    # Remove trailing slash if any
-my $Project = $Project_Dir;
-$Project =~ s/^PROJ//;      # Remove leading 'PROJ'
+my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
 
-my $outfile = "check_FAH-PDBs_$Project.log";
+my $outfile = "check_FAH-PDBs_$Project_Dir.log";
 open(my $OUT, '>', $outfile);
 
-my $Path_To_Project_Dir = "${\getcwd()}/$Project_Dir";
-if (defined $Log_File && -e $Log_File) { check_pdbs_from_logfile($Path_To_Project_Dir, $Log_File); }
-else                                   { check_all_pdbs($Path_To_Project_Dir); }
+my $project_path = "${\getcwd()}/$Project_Dir";
+if (defined $Log_File && -e $Log_File) { check_pdbs_from_logfile($project_path, $Log_File); }
+else                                   { check_all_pdbs($project_path); }
 
 close($OUT);
 
 sub check_pdbs_from_logfile {
-    my ($path_to_project_dir, $logfile) = @_;
+    my ($project_path, $logfile) = @_;
     open(my $LOG, '<', $logfile) or die "[FATAL]  $logfile: $!\n";
 
-    my $previous_run   = -1;
-    my $previous_clone = -1;
+    my $previous_run_number   = -1;
+    my $previous_clone_number = -1;
 
     while (defined(my $line = <$LOG>)) {
-        chomp(my @values = split(/\s+/, $line));
-        my ($logproj, $run, $clone, $time) = @values;
+        chomp(my @fields = split(/\b\s+\b/, $line));
+        my ($logproj, $run_number, $clone_number, $time_in_ps) = @fields;
 
-        if ($logproj != $Project) {
-            die "[FATAL]  PROJ $logproj found is not the same as the expected PROJ$Project!";
+        if ($logproj != $Project_Number) {
+            die "[FATAL]  PROJ$logproj found is not the same as the expected PROJ$Project_Number!";
         }
 
         # change directory only if the current
         # run or clone # has changed in the log file
-        if ($run != $previous_run || $clone != $previous_clone) {
-            chdir "$path_to_project_dir/RUN$run/CLONE$clone/";
+        if ($run_number != $previous_run_number || $clone_number != $previous_clone_number) {
+            chdir "$project_path/RUN$run_number/CLONE$clone_number/";
         }
 
-        my $frame   = $time / 100;                                     # time in ps
-        my $pdbfile = "p${Project}_r${run}_c${clone}_f${frame}.pdb";
+        my $frame_number = $time_in_ps / 100;                                                           # time in ps
+        my $pdbfile      = "p${Project_Number}_r${run_number}_c${clone_number}_f${frame_number}.pdb";
 
         my $pdb_check_result = check_pdb($pdbfile);
         print $OUT "$pdb_check_result\n";
 
-        $previous_clone = $clone;
-        $previous_run   = $run;
+        $previous_clone_number = $clone_number;
+        $previous_run_number   = $run_number;
     }
 
     close($LOG);
 }
 
 sub check_all_pdbs {
-    my ($path_to_project_dir) = @_;
-    chdir($path_to_project_dir);
+    my ($project_path) = @_;
+    chdir($project_path);
 
-    my @run_dirs = get_dirs($path_to_project_dir, "^RUN\\d+\$");
+    my @run_dirs = get_dirs($project_path, '^RUN\d+$');
     if (scalar(@run_dirs) == 0) {
-        print $OUT "[INFO]  No RUN found\n";
+        print $OUT "No RUN* found\n";
         return;
     }
 
     foreach my $run_dir (@run_dirs) {
         chdir $run_dir;
+        my $run_path = "$project_path/$run_dir";
+        print $OUT "Working on $run_path...\n";
 
-        my @clone_dirs = get_dirs("$path_to_project_dir/$run_dir", "^CLONE\\d+\$");
+        my @clone_dirs = get_dirs("$run_path", '^CLONE\d+$');
         if (scalar(@clone_dirs) == 0) {
-            print $OUT "[INFO]  No CLONE found in $run_dir\n";
+            print $OUT "No CLONE* found in $run_dir\n";
             next;
         }
 
         foreach my $clone_dir (@clone_dirs) {
             chdir $clone_dir;
-            check_pdbs("$path_to_project_dir/$run_dir/$clone_dir");
+            my $clone_path = "$project_path/$run_dir/$clone_dir";
+            print $OUT "Working on $clone_path...\n";
+            check_pdbs($clone_path);
             chdir "..";
         }
 
@@ -89,27 +96,15 @@ sub check_all_pdbs {
     }
 }
 
-sub get_dirs {
-    my ($root, $match_pattern) = @_;
-    if (not -d $root) { return; }
-    if ($root !~ m/\/$/) { $root .= "/"; }
-
-    opendir(my $ROOT_HANDLE, $root);
-    my @dirs = grep { -d "$root$_" && /$match_pattern/ } readdir($ROOT_HANDLE);
-    closedir($ROOT_HANDLE);
-
-    return @dirs;
-}
-
 sub check_pdbs {
-    my ($cwd) = @_;
+    my ($clone_path) = @_;
 
-    opendir(my $CWD, $cwd);
-    my @pdbs = grep { /\.pdb/i } readdir($CWD);
-    closedir($CWD);
+    opendir(my $CLONE_PATH, $clone_path);
+    my @pdbs = grep { /\.pdb/i } readdir($CLONE_PATH);
+    closedir($CLONE_PATH);
 
-    if   (scalar(@pdbs) == 0) { print $OUT "[INFO]  No PDB found in $cwd\n"; }
-    else                      { print $OUT "[INFO]  Found ${\scalar(@pdbs)} PDBs in $cwd\n"; }
+    if   (scalar(@pdbs) == 0) { print $OUT "No PDB found\n"; }
+    else                      { print $OUT "Found ${\scalar(@pdbs)} PDBs\n"; }
 
     foreach my $pdb (@pdbs) {
         my $expected_time = get_time_from_pdb_filename($pdb);
@@ -128,39 +123,33 @@ sub check_pdb {
         return "$pdb_filename was NOT created";
     }
 
-    my $pdbsize = get_filesize($pdb_filename);
+    my $pdbsize = int(-s $pdb_filename);
     if ($pdbsize == 0) {
         return "$pdb_filename of ZERO size";
     }
 
     my $pdb_time_from_content = get_time_from_pdb_content($pdb_filename);
     if ($pdb_time_from_content != $expected_time) {
-        return "$pdb_filename has the WRONG time";
+        return "$pdb_filename has the WRONG time: time_from_content=$pdb_time_from_content, expected_time=$expected_time";
     }
 
     return "$pdb_filename created successfully!";
-}
-
-sub get_filesize {
-    my ($pdb_filename) = @_;
-    my $filesize = -s $pdb_filename;
-    return int($filesize);
 }
 
 sub get_time_from_pdb_content {
     my ($pdb_filename) = @_;
 
     chomp(my $title_line = `head $pdb_filename | grep TITLE`);
-    chomp(my @values = split(/\s+/, $title_line));
-    my $time_in_ps = int($values[3]);
+    chomp(my @fields = split(/\b\s+\b/, $title_line));
+    my $time_in_ps = int($fields[3]);
     return $time_in_ps;
 }
 
 sub get_time_from_pdb_filename {
     my ($pdb_filename) = @_;
     $pdb_filename =~ s/\.pdb//;
-    chomp(my @filename_parts = split(/_f/, $pdb_filename));
-    my $time_in_ps = int($filename_parts[1]) * 100;
+    chomp(my @fields = split(/_f/, $pdb_filename));
+    my $time_in_ps = int($fields[1]) * 100;
     return $time_in_ps;
 }
 
