@@ -60,6 +60,7 @@ sub get_prc_from_filename {
 
 sub get_max_dir_number {
     my (@dirs) = @_;
+    if (not @dirs) { return; }
     my @dir_numbers = ();
     foreach my $dir (@dirs) {
         my $dir_number = $dir;
