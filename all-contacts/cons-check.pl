@@ -1,79 +1,131 @@
 #! /usr/bin/perl
 
-# ------------------------------------------------------------------------------
-# Check that all atom-contact files were properly created
-# ------------------------------------------------------------------------------
+#TODO: Add option to generate rerun logfile
 
 use strict;
+use warnings;
 
-# GLOBAL VARIABLES
-$pdbmax      = 100000000;
-$maxpdb      = 0;
-$numpdb      = 0;
-$currentpdbs = 0;
-$numlines    = 0;
-$oldrun      = -1;
-$oldclone    = -1;
+use Cwd;
+use English;
+use FindBin qw($Bin);
+use Getopt::Long qw(HelpMessage :config pass_through);
+use lib "$Bin/../lib";
+use Share::DirUtil qw(get_dirs);
+use Share::FileUtil qw(get_files);
 
-$usage =
-  "\nUsage: \.\/check_FAH_CON-files.pl  \[Project \#\]  \[Max PDB's (optional)\]
-Run this script in the location of the F\@H PROJ\$X directories ...
-After running, grep resulting log file for NOT to look for missing .con files\n\n";
+GetOptions(
+    "logfile|l:s" => \my $Log_File,
+    "help|h"      => sub { print HelpMessage(0) }
+);
 
-$proj = $ARGV[0] || die "$usage\n";
-chomp $proj;
-$maxpdb = $ARGV[1];
-if ($maxpdb > 0) { $pdbmax = $maxpdb; }
-$outfile = "check_FAH_CON-files_" . "$proj" . ".log";
-open(my $OUT, ">", $outfile);
+my $Project_Dir = $ARGV[0] or die "[FATAL] PROJ* dir must be specified\n";
+$Project_Dir =~ s/\/$//;    # Remove trailing slash if any
+my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
 
-##########   read in the logfile and go to the P/R/C directory   #########
-$homedir = `pwd`;
-chomp $homedir;
-$logfile = "/home/server/FAHdata/PKNOT/log$proj";
-open(my $LOG, '<', $logfile) || die "Can't open $logfile: $!\n\n";
-while ((defined($line = <$LOG>)) && ($numpdb <= $pdbmax)) {
-    $numlines++;
-    for ($line) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-    @input = split(/ /, $line);
-    $logproj = $input[0];
-    if ($logproj != $proj) {
-        die "PROJ $logproj found is not the same a PROJ $proj expected\!";
-    }
-    $run   = $input[1];
-    $clone = $input[2];
-    $time  = $input[3];     # this is the time in ps
-    $frame = $time / 100;
+my $outfile = "check_FAH-CONs_$Project_Dir.log";
+open(my $OUT, '>', $outfile);
 
-    # change directory only if the current
-    # run or clone # has chenged in the log file
-    if (($run != $oldrun) || ($clone != $oldclone)) {
-        $currentpdbs = 0;
-        $workdir     = "$homedir/PROJ$proj/RUN$run/CLONE$clone/";
-        chdir $workdir;
-    }
+my $project_path = "${\getcwd()}/$Project_Dir";
+if (defined $Log_File && -e $Log_File) { check_cons_from_logfile($project_path, $Log_File); }
+else                                   { check_all_cons($project_path); }
 
-    # Check for correctly written CON file
-    $confile = "p$proj" . "_r$run" . "_c$clone" . "_f$frame" . ".con";
-    $numpdb++;
-    if (-e $confile) {
-        $test = `wc $confile`;
-        chomp $test;
-        for ($test) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-        @testarray = split(/ /, $test);
-        $wc = @testarray[0];
-        if ($wc > 0) {
+close($OUT);
+
+sub check_cons_from_logfile {
+    my ($project_path, $logfile) = @_;
+
+    my $previous_run_number   = -1;
+    my $previous_clone_number = -1;
+
+    open(my $LOG, '<', $logfile) or die "Can't open $logfile: $!\n";
+    while (defined(my $line = <$LOG>)) {
+
+        my @fields = split(/\s+/, $line);
+        my ($logproj, $run_number, $clone_number, $time_in_ps) = @fields;
+        if ($logproj != $Project_Number) {
+            die "PROJ$logproj found in $logfile is not the same the expected PROJ$Project_Number!\n";
         }
-        else {
-            print $OUT "$confile does NOT have any data ...\n";
+
+        # change directory only if the current
+        # run or clone # has chenged in the log file
+        if (($run_number != $previous_run_number) || ($clone_number != $previous_clone_number)) {
+            chdir "$project_path/RUN$run_number/CLONE$clone_number";
         }
+
+        my $frame_number = $time_in_ps / 100;
+        my $con_file      = "p${Project_Number}_r${run_number}_c${clone_number}_f$frame_number.con";
+
+        print $OUT check_con($con_file) . "\n";
+
+        $previous_clone_number = $clone_number;
+        $previous_run_number   = $run_number;
     }
-    else {
-        print $OUT "$confile does NOT exist!\n";
-    }
-    $oldclone = $clone;
-    $oldrun   = $run;
+
+    close($LOG);
 }
 
-close($LOG);
-close($OUT);
+sub check_all_cons {
+    my ($project_path) = @_;
+    chdir($project_path);
+
+    my @run_dirs = get_dirs($project_path, '^RUN\d+$');
+    if (scalar(@run_dirs) == 0) {
+        print $OUT "No RUN* found\n";
+        return;
+    }
+
+    foreach my $run_dir (@run_dirs) {
+        chdir $run_dir;
+        my $run_path = "$project_path/$run_dir";
+        print $OUT "Working on $run_path...\n";
+
+        my @clone_dirs = get_dirs("$run_path", '^CLONE\d+$');
+        if (scalar(@clone_dirs) == 0) {
+            print $OUT "No CLONE* found in $run_dir\n";
+            next;
+        }
+
+        foreach my $clone_dir (@clone_dirs) {
+            chdir $clone_dir;
+            my $clone_path = "$run_path/$clone_dir";
+            print $OUT "Working on $clone_path...\n";
+            print $OUT check_cons($clone_path) . "\n";
+            chdir "..";
+        }
+
+        chdir "..";
+    }
+}
+
+sub check_cons {
+    my ($clone_path) = @_;
+    my @con_files = get_files($clone_path, '\.con$');
+    my $check_results = '';
+    foreach my $con_file (@con_files) {
+        $check_results .= check_con("$clone_path/$con_file") . "\n";
+    }
+    return $check_results;
+}
+
+sub check_con {
+    my ($con_file) = @_;
+    if (!Share::FileUtil::file_ok($con_file)) {
+        return $Share::FileUtil::File_Ok_Message;
+    }
+    return "$con_file was created successfully";
+}
+
+=head1 NAME
+
+cons-check.pl - Check that all atom-contact files were properly created
+
+=head1 SYNOPSIS
+
+cons-check.pl  <project_dir>
+
+cons-check.pl <project_dir> [--logfile|-l=<logfile.log>]
+
+Run this script in the location of the F@H PROJ* directories.
+After running, grep resulting log file for "NOT" to look for missing .con files.
+
+=cut
