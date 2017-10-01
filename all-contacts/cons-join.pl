@@ -1,110 +1,72 @@
-#! /usr/bin/perl
-
-# ------------------------------------------------------------------------------
-# edited by EJS on 8/5/2013
-# edited on 12/06/13 to shorten DeltaRes and lengthen $D
-# ------------------------------------------------------------------------------
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
-#######  GLOBALS
-$MAX_DIS   = 7.0;    # 7.0 A or less atomic seperations will be recorded
-$DELTA_RES = 2;      # this means Delta(res) = res(j) - res(i) >= 3, must have 2 or more residues between
+use Cwd;
+use FindBin qw($Bin);
+use Getopt::Long qw(HelpMessage :config pass_through);
+use lib "$Bin/../lib";
+use Share::DirUtil qw(get_dirs);
+use Share::Fahda qw(get_max_dir_number);
+use Share::FileUtil qw(get_files);
 
-my ($proj, $run, $clone, $runcount, $clonecount, $totalFrames, $filecount, $pdbFile);
-$work = `pwd`;
-chomp $work;
-print STDOUT "$work\n";
+GetOptions("help|h" => sub { print STDOUT HelpMessage(0) });
 
-$usage = "\nUsage: \.\/00.b.luteo.concat_con-EJS.pl  \[ PROJ \] \>\& 00.b.PROJ\$proj.log \&
-\n   Current version concatenates all individual .con in F@H directories into a single all-contacts\*.log file
-\n";
-$proj = $ARGV[0] || die "$usage\n";
-$p    = $proj;
-$date = `date`;
-chomp $date;
-$pwd = `pwd`;
-chomp $pwd;
-$projectlog = "$pwd" . "\/all-contacts-P$proj" . "_$MAX_DIS" . "Ang_$DELTA_RES" . "Res.txt";
-`rm $projectlog`;
-`touch $projectlog`;
-print STDOUT "Just getting started at $date\n";
+my $Project_Dir = $ARGV[0] or die "[FATAL]  A PROJ* dir must be specified\n";
+my $Output_File = $ARGV[1] or die "[FATAL]  An output file name must be specified\n";
 
-##########  Now go to work creating nat6 (.con) files ..
-do {
-    $runpath  = $work . "/PROJ" . $proj . "\/RUN" . "\*\/";
-    $runcount = `ls -d $runpath | wc | awk '{print \$1}'`;
-    chomp $runcount;
+my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
+my $Cwd              = getcwd();
+my $Project_Path     = "$Cwd/$Project_Dir";
 
-    # print STDOUT "$runpath	$runcount\n";
+my $Joined_Con_File = "$Cwd/$Output_File";
+if (-e $Joined_Con_File) {
+    `rm $Joined_Con_File`;
+}
+`touch $Joined_Con_File`;
 
-    # for each RUN, do the following ...
-    for ($r = 0 ; $r < int($runcount) ; $r++) {
-        $clonepath  = $work . "/PROJ" . $p . "\/RUN" . $r . "\/CLONE" . "\*\/";
-        $clonecount = `ls -d $clonepath | wc | awk '{print \$1}'`;
-        chomp($clonecount);
+do_work();
+print STDOUT "Done!\n";
 
-        # print STDOUT "$clonepath	$clonecount\n";
+sub do_work {
+    my $max_run_number = get_max_dir_number(get_dirs($Project_Path, '^RUN\d$'));
+    if (not defined $max_run_number) { return; }
 
-        # for each CLONE, do the following ...
-        for ($c = 0 ; $c < int($clonecount) ; $c++) {
-            $proj      = $p;
-            $run       = $r;
-            $clone     = $c;
-            $filepath  = $work . "/PROJ" . $p . "\/RUN" . $r . "\/CLONE" . $c . "\/p$proj" . "\*.pdb";
-            $filecount = `ls $filepath | wc| awk '{print \$1}'`;
-            chomp $filecount;
+    for (my $run_number = 0 ; $run_number <= $max_run_number ; $run_number++) {
+        my $run_path = "$Project_Path/RUN$run_number";
+        if (not -d $run_path) { next; }
 
-            # print STDOUT "$filepath 	$filecount\n";
+        my $max_clone_number = get_max_dir_number(get_dirs($run_path, '^CLONE\d+$'));
 
-            # for each PDB file, do the following ...
-            for ($f = 0 ; $f < int($filecount) ; $f++) {
-                $pdbname = "p$proj" . "_r$run" . "_c$clone" . "_f$f" . ".pdb";
-                $conname = "p$proj" . "_r$run" . "_c$clone" . "_f$f" . ".con";
-                $pdbFile = $work . "/PROJ$proj/RUN$run/CLONE$clone/$pdbname";
-                $natFile = $work . "/PROJ$proj/RUN$run/CLONE$clone/$conname";
+        for (my $clone_number = 0 ; $clone_number <= $max_clone_number ; $clone_number++) {
+            my $clone_path = "$run_path/CLONE$clone_number";
+            if (not -d $clone_path) { next; }
+            my @con_files = get_files($clone_path, '\.con$');
 
-                # now we call them *con files, for "contacts"
-                # print STDOUT "$pdbname      $conname      \n$pdbFile     \n$natFile\n\n";
+            my $con_file_count = scalar(@con_files);
+            for (my $frame_number = 0 ; $frame_number < $con_file_count ; $frame_number++) {
+                my $con_file = "p${Project_Number}_r${run_number}_c${clone_number}_f${frame_number}.con";
+                my $con_path = "$clone_path/$con_file";
+                if (not -e $con_path) { print STDOUT "$con_path does not exist\n"; next; }
 
-                if (-e $pdbFile) {
-                    $size = `wc $pdbFile`;
-                    chomp $size;
-                    for ($size) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-                    @sizearray = split(/ /, $size);
-                    $pdbsize = @sizearray[0];
-
-                    if (!($pdbsize > 0)) {
-                        print STDOUT "PDB-ERROR: pdb file $pdbFile is zero-sized ...\n";
-                    }
-                    if (-e $natFile) {
-                        $natsize = `wc $natFile`;
-                        chomp $natsize;
-                        for ($natsize) { s/^\s+//; s/\s+$//; s/\s+/ /g; }
-                        @natsizearray = split(/ /, $natsize);
-                        $natsize = @natsizearray[0];
-
-                        if (!($natsize > 0)) {
-                            print STDOUT "CON-ERROR: con file $natFile is zero-sized ...\n";
-                        }
-                        $totalFrames++;
-                        `echo $conname >> $projectlog`;
-                        `less $natFile >> $projectlog`;
-
-                    }
-                    else {
-                        print STDOUT "CON-ERROR: con file $natFile does not exist ...\n";
-                    }
-                }
-                else {
-                    print STDOUT "PDB-ERROR: pdb file $pdbFile does not exist ...\n";
-                }
+                `echo $con_file >> $Joined_Con_File`;
+                `less $con_path >> $Joined_Con_File`;
             }
         }
     }
-};
+}
 
-$date = `date`;
-chomp $date;
-print STDOUT "Total Frames = $totalFrames ... ";
-print STDOUT "Done at $date\n\n";
+=head1 NAME
+
+cons-join.pl - Concatenates all individual .con in the given F@H directory
+into a single all-contacts*.con file
+
+=head1 SYNOPSIS
+
+cons-join.pl <project_dir> <output.con>
+
+It is recommended to include Max_Distance_In_A and Min_Delta_Residues values
+used in cons-make.pl in the output filename.
+
+=cut
