@@ -11,7 +11,7 @@ find-native-sims.pl <logfile.log> <max_rmsd>
 find-native-sims.pl aquifex_PROJ1797.log 5.0
 ```
 
-## `native-sim-contacts-find.pl`
+## `find-native-sim-contacts.pl`
 
 Given a list of native simulations, extract data to a logfile.
 
