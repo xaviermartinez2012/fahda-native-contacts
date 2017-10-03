@@ -11,10 +11,14 @@ use Share::DirUtil qw(get_dirs);
 use Share::Fahda qw(get_max_dir_number);
 use Share::FileUtil qw(get_files);
 
-GetOptions("help|h" => sub { print STDOUT HelpMessage(0) });
+my $Output_File = undef;
+GetOptions(
+    "output|o=s" => \$Output_File,
+    "help|h"     => sub { print STDOUT HelpMessage(0) }
+);
 
-my $Project_Dir = $ARGV[0] or die "[FATAL]  A PROJ* dir must be specified\n";
-my $Output_File = $ARGV[1] or die "[FATAL]  An output file name must be specified\n";
+my $Project_Dir = $ARGV[0] or die "A PROJ* dir must be specified\n";
+if (not defined $Output_File) { die "An output file name must be specified with --output or -o\n" }
 
 my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
 my $Cwd              = getcwd();
@@ -64,7 +68,7 @@ into a single all-contacts*.con file
 
 =head1 SYNOPSIS
 
-cons-join.pl <project_dir> <output.con>
+cons-join.pl <project_dir> --output=<output.con>
 
 It is recommended to include Max_Distance_In_A and Min_Delta_Residues values
 used in cons-make.pl in the output filename.

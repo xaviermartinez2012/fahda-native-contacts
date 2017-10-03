@@ -12,7 +12,13 @@ use Share::DirUtil qw(get_dirs);
 use Share::FileUtil qw(get_files);
 use Share::Fahda;
 
-GetOptions("help|h" => sub { print STDOUT HelpMessage() });
+my $Max_Distance_In_A = undef;
+my $Min_Delta_Residues = undef;
+GetOptions(
+    "max-atomic-distance|a" => \$Max_Distance_In_A,
+    "min-delta-res|r"       => \$Min_Delta_Residues,
+    "help|h"                => sub { print STDOUT HelpMessage() }
+);
 
 # HISTORICAL:
 ## 7.0 A or less atomic seperations will be recorded
@@ -25,9 +31,13 @@ GetOptions("help|h" => sub { print STDOUT HelpMessage() });
 # Delta(res) = res(j) - res(i) - 1 = # of residues between atoms i's & j's residues
 # e.g. if delta(res) >= 2, there are 2 or more residues between atoms i's & j's residues
 
-my $Project_Dir        = $ARGV[0] or die "[FATAL]  PROJ* dir must be specified\n";
-my $Max_Distance_In_A  = $ARGV[1] or die "[FATAL]  Max distance value (in Angstroms) must be specified\n";
-my $Min_Delta_Residues = $ARGV[2] or die "[FATAL]  Delta residues values must be specified\n";
+my $Project_Dir = $ARGV[0] or die "PROJ* dir must be specified\n";
+if (not defined $Max_Distance_In_A) {
+    die "A max atomic distance (in Angstroms) must be specified with --max-atomic-distance or -a\n";
+}
+if (not defined $Min_Delta_Residues) {
+    die "A min delta residues value must be specified with --min-delta-res or -r\n";
+}
 
 $Project_Dir =~ s/\/$//;
 my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
@@ -140,7 +150,7 @@ cons-make.pl - find all atom-atom contacts
 
 =head1 SYNOPSIS
 
-cons-make.pl <project_dir> <max_atomic_distance> <min_residue_separation>
+cons-make.pl <project_dir> -a=<max_atomic_distance> -r=<min_residue_separation>
 
 Find atom-to-atom contacts where delta residue >= <min_residue_separation> and
 atomic distance <= <max_atomic_distance>. Prints out to individual con files,

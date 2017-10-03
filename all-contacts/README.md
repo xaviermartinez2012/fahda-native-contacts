@@ -69,8 +69,7 @@ Order of execution
 ## `cons-make.pl`
 
 ```man
-    cons-make.pl <project_dir> <max_atomic_distance>
-    <min_residue_separation>
+    cons-make.pl <project_dir> -a=<max_atomic_distance> -r=<min_residue_separation>
 
     Find atom-to-atom contacts where delta residue >=
     <min_residue_separation> and atomic distance <= <max_atomic_distance>.
@@ -93,7 +92,7 @@ Order of execution
 ## `cons-join.pl`
 
 ```man
-    cons-join.pl <project_dir> <output.con>
+    cons-join.pl <project_dir> --output=<output.con>
 
     It is recommended to include Max_Distance_In_A and Min_Delta_Residues
     values used in cons-make.pl in the output filename.
