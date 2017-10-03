@@ -26,6 +26,8 @@ Order of execution
     Additionally overwrite aminoacids.dat with aminoacids-NA.dat so that
     Gromacs tools can recognize RNA molecules.
 
+    Progress is printed to an output log file (make_FAH-PDBs_PROJ*.log).
+
     --logfile, -l <log_file>
         If specified will generate PDBs for frames listed in this file only.
         All existing PDBs are removed before new ones are generated.
@@ -55,8 +57,8 @@ Order of execution
     pdbs-check.pl <project_dir> --logfile=<log_file>
 
     Run this script in the location of the F@H PROJ* directories. After
-    running, grep resulting log file for "WRONG", "ZERO", and "NOT" to look
-    for bad or missing PDBs.
+    running, grep resulting log file (check_FAH-PDBs_PROJ*.log) for "WRONG",
+    "ZERO", and "NOT" to look for bad or missing PDBs.
 
     --logfile, -l <log_file>
         Path to an input logfile. When specified only check the PDBs whose
@@ -71,10 +73,10 @@ Order of execution
 ```man
     cons-make.pl <project_dir> -a=<max_atomic_distance> -r=<min_residue_separation>
 
-    Find atom-to-atom contacts where delta residue >=
-    <min_residue_separation> and atomic distance <= <max_atomic_distance>.
-    Prints out to individual con files, run cons-join.pl to concatenate
-    them.
+    Find atom-to-atom contacts where delta residue >= <min_residue_separation>
+    and atomic distance <= <max_atomic_distance>. Prints out to individual con
+    files, run cons-join.pl to concatenate them. Progress is printed to an output
+    log file (make_FAH-CONs_PROJ*.log).
 ```
 
 ## `cons-check.pl`
@@ -85,8 +87,8 @@ Order of execution
     cons-check.pl <project_dir> [--logfile|-l=<logfile.log>]
 
     Run this script in the location of the F@H PROJ* directories. After
-    running, grep resulting log file for "NOT" to look for missing .con
-    files.
+    running, grep resulting log file (check_FAH-CONs_PROJ*.log) for "NOT" to
+    look for missing .con files.
 ```
 
 ## `cons-join.pl`

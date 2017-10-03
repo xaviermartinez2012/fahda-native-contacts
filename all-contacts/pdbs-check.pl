@@ -163,8 +163,8 @@ pdbs-check.pl  <project_dir>
 pdbs-check.pl  <project_dir> --logfile=<log_file>
 
 Run this script in the location of the F@H PROJ* directories.
-After running, grep resulting log file for "WRONG", "ZERO", and
-"NOT" to look for bad or missing PDBs.
+After running, grep resulting log file (check_FAH-PDBs_PROJ*.log)
+for "WRONG", "ZERO", and "NOT" to look for bad or missing PDBs.
 
 =over
 

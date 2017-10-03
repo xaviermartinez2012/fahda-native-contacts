@@ -126,6 +126,7 @@ cons-check.pl  <project_dir>
 cons-check.pl <project_dir> [--logfile|-l=<logfile.log>]
 
 Run this script in the location of the F@H PROJ* directories.
-After running, grep resulting log file for "NOT" to look for missing .con files.
+After running, grep resulting log file (check_FAH-CONs_PROJ*.log) for
+"NOT" to look for missing .con files.
 
 =cut

@@ -154,6 +154,7 @@ cons-make.pl <project_dir> -a=<max_atomic_distance> -r=<min_residue_separation>
 
 Find atom-to-atom contacts where delta residue >= <min_residue_separation> and
 atomic distance <= <max_atomic_distance>. Prints out to individual con files,
-run cons-join.pl to concatenate them.
+run cons-join.pl to concatenate them. Progress is printed to an output log file
+(make_FAH-CONs_PROJ*.log).
 
 =cut

@@ -192,6 +192,8 @@ And don't forget the good old C<usegromacs33> (or similar) before running the sc
 Additionally overwrite F<aminoacids.dat> with F<aminoacids-NA.dat> so that Gromacs
 tools can recognize RNA molecules.
 
+Progress is printed to an output log file (make_FAH-PDBs_PROJ*.log).
+
 =over
 
 =item --logfile, -l <log_file>
