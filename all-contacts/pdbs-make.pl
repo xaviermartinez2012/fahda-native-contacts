@@ -21,13 +21,13 @@ GetOptions(
     "help|h" => sub { print HelpMessage(0) }
 );
 
-my $Project_Dir = $ARGV[0] or die "[FATAL]  Project directory must be specified\n";
+my $Project_Dir = $ARGV[0] or die "Project directory must be specified\n";
 $Project_Dir =~ s/\/$//;    # Remove trailing slash if any
 my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
 
 open(my $OUT, '>', "make_FAH-PDBs_$Project_Dir.log");
 
-if ($Is_Dry_Run) { print $OUT "[INFO]  Executing in dry-run mode\n"; }
+if ($Is_Dry_Run) { print $OUT "Executing in dry-run mode\n"; }
 my $project_path = "${\getcwd()}/$Project_Dir";
 if (defined $Log_File && -e $Log_File) { generate_pdbs_from_logfile($project_path, $Log_File); }
 else                                   { generate_all_pdbs($project_path); }
@@ -48,7 +48,7 @@ sub generate_pdbs_from_logfile {
 
         my $logproj = $fields[0];
         if ($logproj != $Project_Number) {
-            die "[FATAL]  PROJ$logproj found in $logfile is not the same as the expected PROJ$Project_Number!";
+            die "PROJ$logproj found in $logfile is not the same as the expected PROJ$Project_Number!";
         }
 
         my $run_number   = $fields[1];

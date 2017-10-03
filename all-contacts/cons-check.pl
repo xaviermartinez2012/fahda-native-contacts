@@ -18,7 +18,7 @@ GetOptions(
     "help|h"      => sub { print HelpMessage(0) }
 );
 
-my $Project_Dir = $ARGV[0] or die "[FATAL] PROJ* dir must be specified\n";
+my $Project_Dir = $ARGV[0] or die "PROJ* dir must be specified\n";
 $Project_Dir =~ s/\/$//;    # Remove trailing slash if any
 my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
 

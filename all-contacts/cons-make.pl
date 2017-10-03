@@ -115,7 +115,7 @@ sub calculate_contacts {
 
     my $total_rows = scalar(@$pdb_values);
 
-    open(my $CON, '>', $con_file) or die "[FATAL]  $con_file: $!\n";
+    open(my $CON, '>', $con_file) or die "$con_file: $!\n";
     for (my $i = 0 ; $i < $total_rows ; $i++) {
         for (my $j = $i + 1 ; $j < $total_rows ; $j++) {
             my $delta_residues = abs($$pdb_values[$j][4] - $$pdb_values[$i][4]) - 1;
@@ -141,7 +141,7 @@ sub calculate_contacts {
             printf $CON "%4d\t%7.3f\n", $delta_residues, $distance;
         }
     }
-    close($CON) or die "[FATAL]  $con_file: $!\n";
+    close($CON);
 }
 
 =head1 NAME

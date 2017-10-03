@@ -18,7 +18,7 @@ GetOptions(
     "help|h"      => sub { print HelpMessage(0) }
 );
 
-my $Project_Dir = $ARGV[0] or die "[FATAL]  Project directory must be specified\n";
+my $Project_Dir = $ARGV[0] or die "A PROJ* dir must be specified\n";
 $Project_Dir =~ s/\/$//;    # Remove trailing slash if any
 my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
 
@@ -33,7 +33,7 @@ close($OUT);
 
 sub check_pdbs_from_logfile {
     my ($project_path, $logfile) = @_;
-    open(my $LOG, '<', $logfile) or die "[FATAL]  $logfile: $!\n";
+    open(my $LOG, '<', $logfile) or die "$logfile: $!\n";
 
     my $previous_run_number   = -1;
     my $previous_clone_number = -1;
@@ -43,7 +43,7 @@ sub check_pdbs_from_logfile {
         my ($logproj, $run_number, $clone_number, $time_in_ps) = @fields;
 
         if ($logproj != $Project_Number) {
-            die "[FATAL]  PROJ$logproj found is not the same as the expected PROJ$Project_Number!";
+            die "PROJ$logproj found is not the same as the expected PROJ$Project_Number!";
         }
 
         # change directory only if the current
