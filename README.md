@@ -1,6 +1,6 @@
-# pknot-native-contacts
+# fahda-native-contacts
 
-Native contact characterization for pseudoknot structures
+Native contact calculations for Folding@Home datasets
 
 ## Logfile generation
 
