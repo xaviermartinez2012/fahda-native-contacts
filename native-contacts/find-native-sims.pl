@@ -9,7 +9,7 @@ GetOptions("help|h" => sub { print HelpMessage(0) });
 
 my $Log_File        = $ARGV[0] or die "[FATAL]  A logfile (w/ RMSDs) must be specified\n";
 my $Max_Native_Rmsd = $ARGV[1] or die "[FATAL]  A max native RMSD must be specified\n";
-my $Output_File     = "native_sims_${Max_Native_Rmsd}A.txt";
+my $Outfile         = "native_sims_${Max_Native_Rmsd}A.lst";
 
 my %data;    # "proj:run:clone" => [time_in_ps, is_native_sim]
 open(my $LOG_FILE, '<', $Log_File) or die "[FATAL]  $Log_File: $!\n";
@@ -26,7 +26,7 @@ while (my $line = <$LOG_FILE>) {
 }
 close($LOG_FILE);
 
-open(my $OUT, '>', $Output_File) or die "[FATAL]  $Output_File: $!\n";
+open(my $OUT, '>', $Outfile) or die "[FATAL]  $Outfile: $!\n";
 foreach my $key (keys %data) {
     my $is_native_sim = $data{$key}[1];
     if (!$is_native_sim) { next; }
@@ -37,6 +37,8 @@ foreach my $key (keys %data) {
 }
 close($OUT);
 
+print STDOUT "Output: $Outfile\n";
+
 =head1 NAME
 
 find-native-sims.pl - find native simulations
@@ -46,6 +48,6 @@ find-native-sims.pl - find native simulations
 find-native-sims.pl <log_file> <max_native_rmsd>
 
 Given a max native RMSD in Angstroms, Max_Native_Rmsd, a simulation is "native"
-when all timeframes has RMSD <= max_native_rmsd
+when all timeframes has RMSD <= max_native_rmsd.
 
 =cut
