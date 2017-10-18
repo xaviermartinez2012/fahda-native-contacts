@@ -1,4 +1,4 @@
-# Native Contact Calculation
+# Native Contact Calculations
 
 ## `find-native-sims.pl`
 
@@ -30,40 +30,28 @@ Given a list of native simulations, extract atomic contact data to an outfile.
      1. If project/run/clone in this file matches one from native simulations list,
         print to output all contacts info
 
-## `native-sim-contacts-distance-stats.pl`
+## `native-sim-contacts-stats.pl`
 
-+ Input
-  + List of contacts from native sims
-  + List of native simulations (proj/run/clone/last_time_in_ps)
-+ Output
-  + Unique contacts with percent of time this contact appears in native sims (collectively),
-    mean distances, standard deviation, and mean + 2 * standard devisions
+**Input**: (_a_) native simulation atomic contact data;
+           (_b_) list of native simulations (proj/run/clone/last_time_in_ps).
 
-### Logic of `native-sim-contacts-distance-stats.pl`
+**Output**: Unique contacts with percent of time this contact appears in native sims (collectively),
+            mean atomic distances, and their standard deviations.
 
-1. Read the list of native sims (proj/run/clone/total time) and import the times (in ps), sum them up then divide by 100 to get the total number of frames.
-1. Read in the list of contacts from native sims
-    1. For each line, remove the distance
-        1. If the current i-j contact is the same as the i-j contact from the previous line
-           (or if the previous line is empty [when reading the beginning of this file]),
-           save the i-j distance to a temporary location (id’ed by “$i-$j”).
-        1. If the current $i-$j contact is not the same as the previous $i-$j contact,
-           save this current contact, then look at all of the contacts id’ed by the previous $i-$j pair.
-           This should contains all the distances of all $i-$j contacts. To this collections of distances,
-           find the following statistical quantities: mean (average) distance, total number of distances,
-           standard deviation, mean distance + 2 standard dev, and percentage (total number of distances
-           divided by total number of frames in all native sims). If this percentage is larger than a
-           set cut-off, print these quantities to output.
+**Logic**:
 
-## `native-sim-contacts-2nd-structure.pl`
+  1. Calculate the total number of frames in all native simulations
+      1. Read the list of native simulations (proj/run/clone/total_time_in_ps) and import the times
+      1. Sum them up
+      1. Divide by 100
+  1. Import atomic contact data from native simulations
+      1. Store this data in a hash/dictionary whose keys are `i`-`j` atom numbers and whose
+         corresponding values are arrays of atomic distances
+  1. For each `i`-`j` atom pair's atomic distances, find the following statistical quantities:
+      + mean atomic distance,
+      + mean atomic distance standard deviation,
+      + percentage (total number of distances divided by total number of frames in all native simulations)
 
-<<<<<<< HEAD
-+ Input
-  + secondary structures key file
-  + native sim contacts
-+ Output
-  + Same as input but add 2nd structure info
-=======
 ## `native-sim-contacts-structures.pl`
 
 **Input**: (_a_) native sim contacts;
@@ -79,7 +67,6 @@ Given a list of native simulations, extract atomic contact data to an outfile.
 ## `find-native-contacts.pl`
 
 **Input**: TBD
->>>>>>> 34802ea... Rename 4-summarize-all-contact-data.pl to native-contacts-count.pl
 
 **Output**: TBD
 
