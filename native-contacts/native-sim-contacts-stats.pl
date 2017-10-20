@@ -41,13 +41,16 @@ sub read_atomic_distance_data {
         chomp(my @fields = split(/\b\s+\b/, $line));
         my $atomic_distance = $fields[9];
         my $atom_i          = $fields[0];
+        my $atom_i_residue  = $fields[3];
         my $atom_j          = $fields[4];
+        my $atom_j_residue  = $fields[7];
 
-        if (defined $atomic_distance_data{"$atom_i-$atom_j"}) {
-            push(@{ $atomic_distance_data{"$atom_i-$atom_j"} }, $atomic_distance);
+        my $atom_pair_id = "$atom_i:$atom_i_residue:$atom_j:$atom_j_residue";
+        if (defined $atomic_distance_data{$atom_pair_id}) {
+            push(@{ $atomic_distance_data{$atom_pair_id} }, $atomic_distance);
         }
         else {
-            $atomic_distance_data{"$atom_i-$atom_j"} = [$atomic_distance];
+            $atomic_distance_data{$atom_pair_id} = [$atomic_distance];
         }
     }
     close($CON);
@@ -87,9 +90,10 @@ sub calculate_atomic_distance_stats {
         my $mean_atomic_distance        = $full_descriptive_stats->mean();
         my $mean_atomic_distance_stddev = $full_descriptive_stats->standard_deviation();
 
-        my ($atom_i, $atom_j) = split(/-/, $atom_pair);
-        printf $OUTPUT "%5d    %5d    %6.3f    %6.10f     %6.3f\n", $atom_i, $atom_j, $mean_atomic_distance,
-          $mean_atomic_distance_stddev, $contact_occurance_percent;
+        my ($atom_i, $atom_i_residue, $atom_j, $atom_j_residue) = split(/:/, $atom_pair);
+        printf $OUTPUT "%5d    %5d    %5d    %5d    %6.3f    %6.10f     %6.3f\n",
+          $atom_i, $atom_i_residue, $atom_j, $atom_j_residue,
+          $mean_atomic_distance, $mean_atomic_distance_stddev, $contact_occurance_percent;
     }
     close($OUTPUT);
 }
