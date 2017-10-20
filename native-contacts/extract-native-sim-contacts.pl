@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 use strict;
 use warnings;
@@ -7,45 +7,15 @@ use Getopt::Long qw(HelpMessage :config pass_through);
 
 GetOptions("help|h" => sub { print HelpMessage(0) });
 
-my $Native_Sims_File = $ARGV[0] or die "[FATAL]  A list of proj/run/clone of native sims must be specified\n";
-my $Joined_Cons_File = $ARGV[1] or die "[FATAL]  A contact .con file must be specified\n";
-my $Output_File      = $ARGV[2] or die "[FATAL]  An output filename must be specified\n";
+my $Native_Sims_File = $ARGV[0] or die "A list of proj/run/clone of native sims must be specified\n";
+my $Joined_Cons_File = $ARGV[1] or die "A atomic contact data (.con) file must be specified\n";
+my $Outfile          = $ARGV[2] or die "An outfile must be specified\n";
 
-print STDOUT "[INFO]  Parsing $Native_Sims_File\n";
-my $Native_Sims = parse_native_sims_file($Native_Sims_File);
+print STDOUT "Parsing $Native_Sims_File\n";
+my $Native_Sim_List = parse_native_sims_file($Native_Sims_File);
 
-#  Adding a check to make sure that the native simulations data is useable
-my $NSindex = scalar(keys %$Native_Sims);
-if ($NSindex == 0) {
-    die "[FATAL]  There are no native simulations being used, "
-      . "make sure native simulation file $Native_Sims_File exists and is not empty.\n";
-}
-else {
-    print STDOUT "[INFO]  Native sim file $Native_Sims_File contains usable data";
-}
-
-my $Is_From_Native_Sim = 0;
-open(my $OUT,     '>', $Output_File)      or die "[FATAL]  $Output_File: $!\n";
-open(my $CONFILE, '<', $Joined_Cons_File) or die "[FATAL]  $Joined_Cons_File: $!\n";
-while (my $line = <$CONFILE>) {
-    chomp($line);
-
-    if ($Is_From_Native_Sim and $line !~ /^p/) {
-        print $OUT "$line\n";
-    }
-
-    # Skip if current line is not a timestamp (e.g. "p1796_r0_c0_f0.con")
-    if ($line !~ /^p/) { next; }
-
-    my ($prc, $frame_number) = split(/_f/, $line);
-    $Is_From_Native_Sim = ($$Native_Sims{$prc} == 1 and $frame_number ne "0.con") ? 1 : 0;
-}
-close($CONFILE);
-close($OUT);
-
-#REVIEW: do we need to sort?
-# print STDOUT "[INFO]  Sorting $Output_File...\n";
-# `sort $Output_File > $Output_File_sorted.txt`;
+print STDOUT "Extracting native sim contact data from $Joined_Cons_File\n";
+extract_native_sim_contacts($Joined_Cons_File, $Native_Sim_List);
 print "Done!\n";
 
 sub parse_native_sims_file {
@@ -62,12 +32,37 @@ sub parse_native_sims_file {
     return \%native_sims;
 }
 
+sub extract_native_sim_contacts {
+    my ($joined_cons_file, $native_sim_list) = @_;
+
+    my $is_from_native_sim = 0;
+    open(my $OUT,     '>', $Outfile)          or die "$Outfile: $!\n";
+    open(my $CONFILE, '<', $Joined_Cons_File) or die "$Joined_Cons_File: $!\n";
+    while (my $line = <$CONFILE>) {
+        chomp($line);
+
+        if ($is_from_native_sim and $line !~ /^p/) {
+            print $OUT "$line\n";
+        }
+
+        # Skip if current line is not a timestamp (e.g. "p1796_r0_c0_f0.con")
+        if ($line !~ /^p/) { next; }
+
+        my ($prc, $frame_number) = split(/_f/, $line);
+        $is_from_native_sim = ($$native_sim_list{$prc} == 1 and $frame_number ne "0.con") ? 1 : 0;
+    }
+    close($CONFILE);
+    close($OUT);
+}
+
 =head1 NAME
 
-find-native-sims-contacts.pl - collect all contacts from native simulations
+extract-native-sims-contacts.pl - collect all contacts from native simulations
 
 =head1 SYNOPSIS
 
-find-native-sims-contacts.pl  <native_sims.txt> <joined_cons.con> <output.txt>
+./extract-native-sim-contacts.pl -h
+
+./extract-native-sim-contacts.pl  <native_sims.lst> <joined_cons.con> <out.con>
 
 =cut
