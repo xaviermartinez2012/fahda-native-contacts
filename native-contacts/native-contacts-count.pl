@@ -1,201 +1,169 @@
-#!/usr/bin/perl
-
-# ------------------------------------------------------------------------------
-# Summing up categorized native contacts for entire project per time stamp
-# Originally written by Amethyst Radcliffe and Khai Nguyen in 01/2014
-# ------------------------------------------------------------------------------
+#!/usr/bin/env perl
 
 use strict;
-use POSIX qw/strftime/;
+use warnings;
 
-# flush anything in buffer to output to avoid delayed outputing
-use FileHandle;
-STDOUT->autoflush(1);
+use Config::Simple;
+use FindBin qw($Bin);
+use Getopt::Long qw(HelpMessage :config pass_through);
+use lib "$Bin/../lib";
+use Share::Fahda qw(get_prc_from_filename);
 
-$usage = "$0 [project] [nat-con-file] [all-contact-file] [percent] [distance] [distanceNC]
-[output-file] [exclude-list-output-file] [native-contacts-list-output-file]\n";
+GetOptions(
+    "sample-config|s" => sub { generate_sample_config_file(); exit(0); },
+    "help|h" => sub { print STDOUT HelpMessage(0); }
+);
 
-# number of atoms there are for the molecule, must be changed for every new molecule
-$MOLECULE_ATOM_COUNT = 839;
+my $Config_File = $ARGV[0] or die "A config file must be specified\n";
+count_native_contacts($Config_File);
 
-$Project                                  = $ARGV[0] || die "$usage\n";
-$Native_Contact_File                      = $ARGV[1] || die "$usage\n";
-$All_Contact_File                         = $ARGV[2] || die "$usage\n";
-$Minimum_Native_Contact_Occurance_Percent = $ARGV[3] || die "$usage\n";
+sub count_native_contacts {
+    my ($config_file) = @_;
 
-$Distance   = $ARGV[4] || die "$usage\n";
-$DistanceNC = $ARGV[5] || die "$usage\n";
+    my $cfg                  = new Config::Simple($config_file);
+    my $all_contacts_file    = $cfg->param("all_contacts_file");
+    my $native_contact_specs = $cfg->param("native_contact_specs_file");
+    my $max_atomic_distance  = $cfg->param("max_atomic_distance");
+    my $outfile              = $cfg->param("outfile");
 
-$Output_File                       = $ARGV[6] || die "$usage\n";
-$Excluded_Native_Contact_File      = $ARGV[7] || die "$usage\n";
-$Included_Native_Contact_List_File = $ARGV[8] || die "$usage\n";
+    my $native_contact_specs = read_native_contact_specs($native_contact_specs_File);
 
-# INITIALIZE HASH TABLES
-# ------------------------------------------------------------------------------
-for (my $i = 1 ; $i < $MOLECULE_ATOM_COUNT ; $i++) {
-    for (my $j = 1 ; $j < $MOLECULE_ATOM_COUNT ; $j++) {
-        $Is_From_Native_Sim{"$i:$j"}                        = 0;
-        $Native_Contact_Average_Distance{"$i:$j"}           = 0;
-        $Native_Contact_Average_Distance_Plus_2SD{"$i:$j"}  = 0;
-        $Native_Contact_Occurance_Percent{"$i:$j"}          = 0;
-        $Native_Contact_Secondary_Structure_Symbol{"$i:$j"} = "";
-        $Is_Excluded{"$i:$j"}                               = 0;
-    }
-}
+    my $stem1_native_contact_count    = 0;
+    my $stem2_native_contact_count    = 0;
+    my $loop1_native_contact_count    = 0;
+    my $loop2_native_contact_count    = 0;
+    my $tertiary_native_contact_count = 0;
+    my $total_native_contact_count    = 0;
+    my $non_native_contact_count      = 0;
 
-# OPENING AND STORING NATIVE SIMULATIONS CONTACTS INFO
-# INTO HASH TABLES FOR LATER COMPARISON
-# ------------------------------------------------------------------------------
-open(my $outNAT, '>', $Included_Native_Contact_List_File)
-  || die "ERROR: Cannot write to $Included_Native_Contact_List_File: $!\n";
+    my $previous_project_number = undef;
+    my $previous_run_number     = undef;
+    my $previous_clone_number   = undef;
+    my $previous_time_in_ps     = undef;
 
-open(my $outEXL, '>', $Excluded_Native_Contact_File)
-  || die "ERROR: Cannot write to $Excluded_Native_Contact_File: $!\n";
+    open(my $OUT,   '>', $outfile)           or die "$outfile: $!\n";
+    open(my $inCON, '<', $all_contacts_file) or die "$all_contacts_file: $!\n";
+    while (my $line = <$inCON>) {
+        my ($project_number, $run_number, $clone_number, $frame_number) = get_prcf_from_filename($line);
 
-open(my $inNCLIST, '<', $Native_Contact_File) || die "ERROR: Cannot read $Native_Contact_File: $!\n";
-
-while (my $line = <$inNCLIST>) {
-    my @values = split(/s+/, chomp $line);
-
-    my $nativeAtom1 = $values[0];
-    my $nativeAtom2 = $values[4];
-
-    $Is_From_Native_Sim{"$nativeAtom1:$nativeAtom2"}                        = 1;
-    $Native_Contact_Occurance_Percent{"$nativeAtom1:$nativeAtom2"}          = $values[9];
-    $Native_Contact_Average_Distance{"$nativeAtom1:$nativeAtom2"}           = $values[10];
-    $Native_Contact_Average_Distance_Plus_2SD{"$nativeAtom1:$nativeAtom2"}  = $values[12];
-    $Native_Contact_Secondary_Structure_Symbol{"$nativeAtom1:$nativeAtom2"} = $values[13];    # secondary structure symbol
-
-    # Printing out exluded contacts for reference:
-    # if the percent is small, print line to exclusion list
-    if (($values[9] < $Minimum_Native_Contact_Occurance_Percent) or ($values[12] > $DistanceNC)) {
-        $Is_Excluded{"$nativeAtom1:$nativeAtom2"} = 1;
-        print $outEXL "$values\n";
-    }
-    else {
-        print $outNAT "$values\n";
-    }
-}
-
-close($inNCLIST);
-close($outNAT);
-close($outEXL);
-
-# SAVE RESULT TO OUTPUT FILE
-# ------------------------------------------------------------------------------
-open(my $OUT,   '>', $Output_File)      || die "ERROR: Cannot write to $Output_File: $!\n";
-open(my $inCON, '<', $All_Contact_File) || die "ERROR: Cannot read from $All_Contact_File: $!\n";
-
-$Stem1_Native_Contact_Count    = 0;
-$Stem2_Native_Contact_Count    = 0;
-$Loop1_Native_Contact_Count    = 0;
-$Loop2_Native_Contact_Count    = 0;
-$Tertiary_Native_Contact_Count = 0;
-$Total_Native_Contact_Count    = 0;
-$Non_Native_Contact_Count      = 0;
-
-$Run            = 0;
-$Previous_Run   = 0;
-$Clone          = 0;
-$Previous_Clone = 0;
-$Time           = 0;
-$Previous_Time  = 0;
-
-$Is_End_Of_Frame_Data = 0;
-
-# EXTRACTING INFORMATION ABOUT PROJ, RUN, CLONE, AND TIME
-# ------------------------------------------------------------------------------
-while (my $line = <$inCON>) {
-    my @values = split(/\s+/, chomp $line);
-
-    if (is_end_of_frame_data($line)) {
-        if ($. > 1) {    # if not the first line
-            $Is_End_Of_Frame_Data = 1;
-            $Previous_Run      = $Run;
-            $Previous_Clone    = $Clone;
-            $Previous_Time     = $Time;
+        if ($. == 1) {
+            $previous_project_number = $project_number;
+            $previous_run_number     = $run_number;
+            $previous_clone_number   = $clone_number;
+            $previous_time_in_ps     = $frame_number * 100;
+            next;
         }
 
-        ($Run, $Clone, $Time) = get_project_run_clone_frame($line);
+        if (is_end_of_frame_data($line) || eof) {
+            $total_native_contact_count =
+              $stem1_native_contact_count +
+              $stem2_native_contact_count +
+              $loop1_native_contact_count +
+              $loop2_native_contact_count +
+              $tertiary_native_contact_count;
 
-        if ($Clone != $Previous_Clone) {
-            print STDOUT "Processed $Project $Run $Previous_Clone\n";
-            $Previous_Clone = $Clone;
+            printf $OUT "%5d\t%5d\t%5d\t%6d\t",
+              $previous_project_number, $previous_run_number, $previous_clone_number, $previous_time_in_ps;
+            printf $OUT "%5d\t%5d\t",      $stem1_native_contact_count, $stem2_native_contact_count;
+            printf $OUT "%5d\t%5d\t%5d\t", $loop1_native_contact_count, $loop2_native_contact_count, $tertiary_native_contact_count;
+            printf $OUT "%5d\t%5d\n",      $total_native_contact_count, $non_native_contact_count;
+
+            # reseting counters for next time frame
+            $stem1_native_contact_count    = 0;
+            $stem2_native_contact_count    = 0;
+            $loop1_native_contact_count    = 0;
+            $loop2_native_contact_count    = 0;
+            $tertiary_native_contact_count = 0;
+            $total_native_contact_count    = 0;
+            $non_native_contact_count      = 0;
+
+            $previous_project_number = $project_number;
+            $previous_run_number     = $run_number;
+            $previous_clone_number   = $clone_number;
+            $previous_time_in_ps     = $time_in_ps;
+            next;
+        }
+
+        chomp(my @fields = split(/\b\s+\b/, $line));
+        my $atom_i          = $fields[0];
+        my $atom_j          = $fields[4];
+        my $atomic_distance = $fields[9];
+
+        if ($atomic_distance > $max_atomic_distance) { next; }
+
+        if (!defined($$native_contact_specs{"$atom_i:$atom_j"})) {
+            $non_native_contact_count++;
+            next;
+        }
+
+        if ($atomic_distance <= $$native_contact_specs{"$atom_i:$atom_j"}{"mean_atomic_distance"} +
+            2 * $$native_contact_specs{"$atom_i:$atom_j"}{"mean_atomic_distance_stddev"})
+        {
+            if    ($$native_contact_specs{"$atom_i:$atom_j"}{"structure_key"} eq "s1") { $stem1_native_contact_count++; }
+            elsif ($$native_contact_specs{"$atom_i:$atom_j"}{"structure_key"} eq "s2") { $stem2_native_contact_count++; }
+            elsif ($$native_contact_specs{"$atom_i:$atom_j"}{"structure_key"} eq "l1") { $loop1_native_contact_count++; }
+            elsif ($$native_contact_specs{"$atom_i:$atom_j"}{"structure_key"} eq "l2") { $loop2_native_contact_count++; }
+            elsif ($$native_contact_specs{"$atom_i:$atom_j"}{"structure_key"} eq "t")  { $tertiary_native_contact_count++; }
         }
     }
 
-    my $atom1 = $values[0];
-    my $atom2 = $values[4];
-    my $distance  = $values[9];
-
-    if ($distance <= $Distance) {
-        # if the atoms pair is on native list but not on exclusion list
-        if ($Is_From_Native_Sim{"$atom1:$atom2"} == 1 && $Is_Excluded{"$atom1:$atom2"} == 0) {
-            if ($distance <= $Native_Contact_Average_Distance_Plus_2SD{"$atom1:$atom2"}) {
-                if    ($Native_Contact_Secondary_Structure_Symbol{"$atom1:$atom2"} eq "S1") { $Stem1_Native_Contact_Count++; }
-                elsif ($Native_Contact_Secondary_Structure_Symbol{"$atom1:$atom2"} eq "S2") { $Stem2_Native_Contact_Count++; }
-                elsif ($Native_Contact_Secondary_Structure_Symbol{"$atom1:$atom2"} eq "L1") { $Loop1_Native_Contact_Count++; }
-                elsif ($Native_Contact_Secondary_Structure_Symbol{"$atom1:$atom2"} eq "L2") { $Loop2_Native_Contact_Count++; }
-                elsif ($Native_Contact_Secondary_Structure_Symbol{"$atom1:$atom2"} eq "T")  { $t++; }
-            }
-        }
-        elsif ($Is_From_Native_Sim{"$atom1:$atom2"} == 0 and $Is_Excluded{"$atom1:$atom2"} == 0) {
-            $Non_Native_Contact_Count++;
-        }
-    }
-
-    #  Print to output file
-    if (eof() || $Is_End_Of_Frame_Data == 1) {
-        $Total_Native_Contact_Count =
-          $Stem1_Native_Contact_Count +
-          $Stem2_Native_Contact_Count +
-          $Loop1_Native_Contact_Count +
-          $Loop2_Native_Contact_Count + $t;
-        printf $OUT "%5d\t%5d\t%5d\t%5d\t%5d\t%5d\t%5d\t%5d\t%5d\t%5d\t%5d\n",
-          $Project, $Previous_Run, $Previous_Clone, $Previous_Time, $Stem1_Native_Contact_Count, $Stem2_Native_Contact_Count,
-          $Loop1_Native_Contact_Count, $Loop2_Native_Contact_Count, $Tertiary_Native_Contact_Count, $Total_Native_Contact_Count,
-          $Non_Native_Contact_Count;
-
-        # reseting counters for next time frame
-        $Stem1_Native_Contact_Count    = 0;
-        $Stem2_Native_Contact_Count    = 0;
-        $Loop1_Native_Contact_Count    = 0;
-        $Loop2_Native_Contact_Count    = 0;
-        $Tertiary_Native_Contact_Count = 0;
-        $Total_Native_Contact_Count    = 0;
-        $Non_Native_Contact_Count      = 0;
-
-        $Is_End_Of_Frame_Data = 0;
-    }
+    close($OUT);
+    close($inCON);
 }
-
-close($OUT);
-close($inCON);
-
-
-sub get_project_run_clone_frame {
-
-    # No need to extract project number because it is input by user.
-    # An example of timestamp in all-contact-data file: p1796_r0_c0_f0.con
-
-    my ($line) = @_;
-    my @values = split('_', $line);
-
-    my $run   = $values[1] =~ s/r//r;
-    my $clone = $values[2] =~ s/c//r;
-
-    $values[3] =~ s/r//r;
-    $values[3] =~ s/\.con//r;
-    my $time = $values[3] * 100;
-
-    return ($run, $clone, $time);
-}
-
 
 sub is_end_of_frame_data {
+
     # When a line is of the format "pX_rY_cZ_fW.con", where
-	# X, Y, Z, and W represent project, run, clone, and time, respectively
-    # it signifies the start of a new frame's atom-contact data
+    # X, Y, Z, and W represent project, run, clone, and time (picosecond),
+    # respectively, it signifies the start of a new frame's atom-contact data
+
     my ($line) = @_;
-    return ($line =~ "^p.+");
+    return ($line =~ '^p\d+_r\d+_c\d+_f\d+\.con$');
 }
+
+sub read_native_contact_specs {
+    my ($native_contact_specs_file) = @_;
+    my %native_contact_specs = {};
+    open(my $NAT_SPECS, '<', $native_contact_specs_file) or die "$native_contact_specs_file: $!\n";
+    while (my $line = <$NAT_SPECS>) {
+        chomp(my @fields = split(/\b\s+\b/, $line));
+        my $atom_i                      = $fields[0];
+        my $atom_j                      = $fields[1];
+        my $mean_atomic_distance        = $fields[2];
+        my $mean_atomic_distance_stddev = $fields[3];
+        my $occurance_percent           = $fields[4];
+        my $structure_key               = $fields[5];
+
+        $native_contact_specs{"$atom_i:$atom_j"} = \{
+            "mean_atomic_distance"        => $mean_atomic_distance,
+            "mean_atomic_distance_stddev" => $mean_atomic_distance_stddev,
+            "occurance_percent"           => $occurance_percent,
+            "structure_key"               => $structure_key
+        };
+    }
+
+    return \%native_contact_specs;
+}
+
+sub generate_sample_config_file {
+    my $cfg = new Config::Simple(syntax => 'http');
+    $cfg->param("all_contacts_file",         "contacts.con");
+    $cfg->param("native_contact_specs_file", "native_contacts.spc");
+    $cfg->param("max_atomic_distance",       "5.0");
+    $cfg->param("outfile",                   "out.log");
+    $cfg->write("run.cfg");
+}
+
+=head1 NAME
+
+script.pl - Count number of native & non-native contacts for every data point
+
+=head1 SYNOPSIS
+
+./native-contacts-count.pl -h
+
+./native-contacts-count.pl --sample-config
+
+./native-contacts-count.pl run.cfg
+
+=cut
