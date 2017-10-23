@@ -55,7 +55,7 @@ sub check_pdbs_from_logfile {
         my $frame_number = $time_in_ps / 100;                                                           # time in ps
         my $pdbfile      = "p${Project_Number}_r${run_number}_c${clone_number}_f${frame_number}.pdb";
 
-        my $pdb_check_result = check_pdb($pdbfile);
+        my $pdb_check_result = check_pdb($pdbfile, $time_in_ps);
         print $OUT "$pdb_check_result\n";
 
         $previous_clone_number = $clone_number;
