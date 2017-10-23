@@ -43,17 +43,18 @@ sub get_prc_from_clone_path {
 }
 
 sub get_prc_from_filename {
-    my ($xtc_filename) = @_;
-    $xtc_filename =~ s/\.xtc$//;
-    my @fields = split(/_/, $xtc_filename);
+    my ($filename) = @_;
+
+    $filename =~ s/\.[^.]*$//;    # remove extension
+    my @fields = split(/_/, $filename);
 
     my $project_field = first { /^P\d+$/i } @fields;
     my $run_field     = first { /^R\d+$/i } @fields;
     my $clone_field   = first { /^C\d+$/i } @fields;
 
     my ($project_number) = (defined $project_field) ? ($project_field =~ /(\d+$)/) : undef;
-    my ($run_number)     = (defined $run_field)     ? ($run_field =~ /d\+$/)       : undef;
-    my ($clone_number)   = (defined $clone_field)   ? ($clone_field =~ /d\+$/)     : undef;
+    my ($run_number)     = (defined $run_field)     ? ($run_field =~ /\d+$/)       : undef;
+    my ($clone_number)   = (defined $clone_field)   ? ($clone_field =~ /\d+$/)     : undef;
 
     return ($project_number, $run_number, $clone_number);
 }
