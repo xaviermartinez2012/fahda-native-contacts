@@ -3,31 +3,32 @@
 ## `find-native-sims.pl`
 
 Find native simulations where the structure of each data point has an RMSD no
-greater than a max RMSD (when compared to frame0). Will generate an output with name `native_sims_<MAX_RMSD>A.txt`.
+greater than a max RMSD (when compared to frame0).
 
-```sh
-find-native-sims.pl <logfile.log> <max_rmsd>
+**Input**: (_a_) logfile (project/run/clone/last_time_in_ps/RMSD);
+           (_b_) max RMSD (Angstroms).
 
-find-native-sims.pl aquifex_PROJ1797.log 5.0
-```
+**Output**: `native_sims_<MAX_RMSD>A.txt`, containing project/run/clone/last_time_in_ps.
 
-## `find-native-sim-contacts.pl`
+**Logic**: For each simulation (having a unique project/run/clone), if all data point
+           has an RMSD not greater than MAX_RMSD, it is considered native. When this is
+           the case, output the simulation's project, run, clone, and final timeframe (ps).
 
-Given a list of native simulations, extract data to a logfile.
+## `extract-native-sim-contacts.pl`
 
-+ Input
-  + List of native simulations (proj/run/clone/last_time_in_ps)
-  + Concatenated all-contact.con
-+ Output
-  + Contacts from native sims only.
+Given a list of native simulations, extract atomic contact data to an outfile.
 
-### Logic of `native-sim-contacts-find.pl`
+**Input**: (_a_) list of native simulations (proj/run/clone/last_time_in_ps);
+           (_b_) concatenated all_contact.con.
+
+**Output**: atomic contacts data from native sims only.
+
+**Logic**:
 
   1. Read in list of native simulations (project/run/clone)
   1. Read in concatenated contacts file
      1. If project/run/clone in this file matches one from native simulations list,
         print to output all contacts info
-  1. Sort the output file
 
 ## `native-sim-contacts-distance-stats.pl`
 
@@ -56,16 +57,33 @@ Given a list of native simulations, extract data to a logfile.
 
 ## `native-sim-contacts-2nd-structure.pl`
 
+<<<<<<< HEAD
 + Input
   + secondary structures key file
   + native sim contacts
 + Output
   + Same as input but add 2nd structure info
+=======
+## `native-sim-contacts-structures.pl`
 
-### Logic of `native-sim-contacts-2nd-structure.pl`
+**Input**: (_a_) native sim contacts;
+           (_b_) secondary structure keys file.
+**Output**: Same as input but add 2nd structure info.
 
-1. Read in secondary structure file and save its content to memory.
-1. Read in the output from 01.b.v3 and add on secondary structure info for each line based on $i-$j atom pair.
+**Logic**:
+
+  1. Import structure keys from file
+  1. ??? Read in the output from 01.b.v3 and add on secondary structure info
+     for each line based on `i`-`j` atom pair
+
+## `find-native-contacts.pl`
+
+**Input**: TBD
+>>>>>>> 34802ea... Rename 4-summarize-all-contact-data.pl to native-contacts-count.pl
+
+**Output**: TBD
+
+**Logic**: TBD
 
 ## `summarize-all-contact-data.pl`
 
