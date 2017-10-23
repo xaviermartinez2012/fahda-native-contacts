@@ -180,11 +180,15 @@ pdbs-make.pl - generate all PDBs for a F@H project
 
 pdbs-make.pl -h
 
-pdbs-make.pl  <project_dir>
+pdbs-make.pl <project_dir>
 
-pdbs-make.pl --l=<log_file>
+pdbs-make.pl <project_dir> --remove-existing
 
-pdbs-make.pl --l=<log_file> --m=<number_of_max_pdb>
+pdbs-make.pl <project_dir> --dry-run
+
+pdbs-make.pl <project_dir> -l=LOGFILE
+
+pdbs-make.pl <project_dir> -l=LOGFILE -m=NUMBER_OF_MAX_PDB
 
 Run this script in the same location as the PROJ* directories.
 And don't forget the good old C<usegromacs33> (or similar) before running the script!
@@ -210,7 +214,7 @@ This option is ignored if a log file is not specified.
 
 When specified, no files would be created/modified.
 
-=item --pdbmax, -p <num>
+=item --pdbmax, -m <num>
 
 If specified will process this number <num> of PDBs only. Default to 100,000,000.
 
