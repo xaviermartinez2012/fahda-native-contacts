@@ -158,9 +158,9 @@ pdbs-check.pl - check the integrity of the PDBs
 
 pdbs-check.pl  -h
 
-pdbs-check.pl  <project_dir>
+pdbs-check.pl <project_dir>
 
-pdbs-check.pl  <project_dir> --logfile=<log_file>
+pdbs-check.pl <project_dir> --logfile=LOGFILE
 
 Run this script in the location of the F@H PROJ* directories.
 After running, grep resulting log file (check_FAH-PDBs_PROJ*.log)
@@ -168,7 +168,7 @@ for "WRONG", "ZERO", and "NOT" to look for bad or missing PDBs.
 
 =over
 
-=item --logfile, -l <log_file>
+=item --logfile, -l <LOGFILE>
 
 Path to an input logfile. When specified only check the PDBs whose project,
 run, clone, and time (ps) listed in the logfile.
