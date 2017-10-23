@@ -56,9 +56,9 @@ sub generate_sample_config {
     my $cfg = new Config::Simple(syntax => 'http');
     $cfg->param("min_native_contact_occurance_percent",  "0.25");
     $cfg->param("max_native_contact_distance_angstroms", "6.0");
-    $cfg->param("excluded_contacts_file",                "excluded.txt");
-    $cfg->param("native_contacts_file",                  "native_cons.txt");
-    $cfg->param("native_sim_contacts_file",              "native_sims.txt");
+    $cfg->param("excluded_contacts_file",                "excluded.spc");
+    $cfg->param("native_contacts_file",                  "native_cons.spc");
+    $cfg->param("native_sim_contacts_file",              "native_sims.con");
     $cfg->write("run.cfg");
 }
 
