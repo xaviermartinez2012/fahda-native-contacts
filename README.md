@@ -2,6 +2,18 @@
 
 Native contact calculations for Folding@Home datasets
 
+## Download
+
+The scripts can be downloaded from [here](https://github.com/sorinlab/fahda-native-contacts/archive/master.zip).
+
+You can also use the `git clone` command.
+
+```bash
+git clone https://github.com/sorinlab/fahda-native-contacts
+git submodule init
+git submodule update
+```
+
 ## RMSD & Rg calculation
 
 Calculate RMSD & Rg for each frame in all simulations and output to logfile. The script will not regenerate the `*.xvg` files if they already exist.
