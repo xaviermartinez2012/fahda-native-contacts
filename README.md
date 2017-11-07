@@ -14,6 +14,19 @@ cd fahda-native-contacts
 git submodule init
 git submodule update
 ```
+## Prerequisites 
+
+Use `cpan` or `cpanm` as root to install the following CPAN packages before running the scripts.
+
+```bash
+sudo cpan <package>
+
+# or
+
+sudo cpanm <package> #recommended
+```
+
+* [Sort::Natural::Key](https://metacpan.org/pod/Sort::Key::Natural)
 
 ## All Atom-to-atom Contact Calculations
 
