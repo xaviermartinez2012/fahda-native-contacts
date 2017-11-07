@@ -58,7 +58,8 @@ Order of execution
 
     Run this script in the location of the F@H PROJ* directories. After
     running, grep resulting log file (check_FAH-PDBs_PROJ*.log) for "WRONG",
-    "ZERO", and "NOT" to look for bad or missing PDBs.
+    "ZERO", and "NOT" to look for bad or missing PDBs. The script will also
+    attempt to fix the "wrong timestamp" issues.
 
     --logfile, -l <log_file>
         Path to an input logfile. When specified only check the PDBs whose
