@@ -142,7 +142,7 @@ sub generate_all_pdbs {
             my $pdb_file       = "p${Project_Number}_r${run_number}_c${clone_number}_f.pdb";
 
             # `echo 1` to select the RNA (Protein) group in trjconv command
-            my $trjconv_cmd = "echo 1 | gmx trjconv -s frame0.tpr -f $xtc_file -o $pdb_file -sep 2>&1";
+            my $trjconv_cmd = "echo 1 | trjconv -s frame0.tpr -f $xtc_file -o $pdb_file -sep 2>&1";
             print $OUT "Executing `$trjconv_cmd`\n";
             if (!$Is_Dry_Run) {
                 print $OUT `$trjconv_cmd` . "\n";
