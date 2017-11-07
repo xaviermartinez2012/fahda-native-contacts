@@ -10,6 +10,7 @@ You can also use the `git clone` command.
 
 ```bash
 git clone https://github.com/sorinlab/fahda-native-contacts
+cd fahda-native-contacts
 git submodule init
 git submodule update
 ```
