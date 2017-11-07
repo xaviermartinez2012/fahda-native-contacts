@@ -1,17 +1,18 @@
-#!/usr/bin/perl
-
-#TODO: Specify optional rerun log filename
+#!/usr/bin/env perl
 
 use strict;
 use warnings;
 
 use Cwd;
 use English;
+use File::Compare;
+use File::Copy qw(move);
 use FindBin qw($Bin);
 use Getopt::Long qw(HelpMessage :config pass_through);
 use lib "$Bin/../lib";
 use Share::DirUtil qw(get_dirs);
 use Share::FileUtil;
+use Sort::Key::Natural qw(natsort);
 
 GetOptions(
     "logfile|l:s" => \my $Log_File,
@@ -22,8 +23,8 @@ my $Project_Dir = $ARGV[0] or die "A PROJ* dir must be specified\n";
 $Project_Dir =~ s/\/$//;    # Remove trailing slash if any
 my ($Project_Number) = $Project_Dir =~ /(\d+$)/;
 
-my $outfile = "check_FAH-PDBs_$Project_Dir.log";
-open(my $OUT, '>', $outfile);
+my $Outfile = "check_FAH-PDBs_$Project_Dir.log";
+open(my $OUT, '>', $Outfile);
 
 my $project_path = "${\getcwd()}/$Project_Dir";
 if (defined $Log_File && -e $Log_File) { check_pdbs_from_logfile($project_path, $Log_File); }
@@ -52,7 +53,7 @@ sub check_pdbs_from_logfile {
             chdir "$project_path/RUN$run_number/CLONE$clone_number/";
         }
 
-        my $frame_number = $time_in_ps / 100;                                                           # time in ps
+        my $frame_number = $time_in_ps / 100;
         my $pdbfile      = "p${Project_Number}_r${run_number}_c${clone_number}_f${frame_number}.pdb";
 
         my $pdb_check_result = check_pdb($pdbfile, $time_in_ps);
@@ -102,7 +103,7 @@ sub check_pdbs {
     my ($clone_path) = @_;
 
     opendir(my $CLONE_PATH, $clone_path);
-    my @pdbs = grep { /\.pdb/i } readdir($CLONE_PATH);
+    my @pdbs = natsort(grep { /\.pdb/i } readdir($CLONE_PATH));
     closedir($CLONE_PATH);
 
     if   (scalar(@pdbs) == 0) { print $OUT "No PDB found\n"; }
@@ -110,7 +111,10 @@ sub check_pdbs {
 
     foreach my $pdb (@pdbs) {
         my $expected_time = get_time_from_pdb_filename($pdb);
-        my $pdb_check_result = check_pdb($pdb, $expected_time);
+        my $pdb_check_result = "\t" . check_pdb($pdb, $expected_time);
+        if ($pdb_check_result =~ m/wrong time/i) {
+            $pdb_check_result .= "; " . fix_mismatched_timestamps($pdb);
+        }
         print $OUT "$pdb_check_result\n";
     }
 }
@@ -118,7 +122,7 @@ sub check_pdbs {
 sub check_pdb {
 
     # Check for correctly written PDB file
-    # by looking for wrong time stamps and zero filesize
+    # by looking for non-existent, zero-sized, and timestamp-mismatched issues
 
     my ($pdb_filename, $expected_time) = @_;
     if (!Share::FileUtil::file_ok($pdb_filename)) {
@@ -127,7 +131,8 @@ sub check_pdb {
 
     my $pdb_time_from_content = get_time_from_pdb_content($pdb_filename);
     if ($pdb_time_from_content != $expected_time) {
-        return "$pdb_filename has the WRONG time: time_from_content=$pdb_time_from_content, expected_time=$expected_time";
+        return "$pdb_filename has the WRONG time "
+          . "(time from content: $pdb_time_from_content, expected time: $expected_time)";
     }
 
     return "$pdb_filename created successfully!";
@@ -150,6 +155,33 @@ sub get_time_from_pdb_filename {
     return $time_in_ps;
 }
 
+sub fix_mismatched_timestamps {
+    my ($pdb_filename)       = @_;
+    my $correct_time_in_ps   = get_time_from_pdb_content($pdb_filename);
+    my $correct_frame_number = $correct_time_in_ps / 100;
+    my $correct_pdb_filename = $pdb_filename;
+    $correct_pdb_filename =~ s/_f\d+/_f$correct_frame_number/;
+
+    if (not -e $correct_pdb_filename) {
+        move($pdb_filename, $correct_pdb_filename);
+        return "Rename $pdb_filename to $correct_pdb_filename";
+    }
+
+    # compare 2 PDBs but ignore the MODEL declaration lines
+    # ref: http://www.wwpdb.org/documentation/file-format-content/format33/sect9.html
+    if (
+        File::Compare::compare_text($pdb_filename, $correct_pdb_filename,
+            sub { $_[0] !~ m/^MODEL/ && $_[1] !~ m/^MODEL/ && $_[0] ne $_[1] }) != 0
+      )
+    {
+        #move $correct_pdb_filename to a location TBD return message; move it?
+        return "$pdb_filename is different from $correct_pdb_filename";
+    }
+
+    unlink($pdb_filename) or die "Cannot delete $pdb_filename: $!\n";
+    return "$pdb_filename is deleted since its content is identical to $correct_pdb_filename";
+}
+
 =head1 NAME
 
 pdbs-check.pl - check the integrity of the PDBs
@@ -165,6 +197,7 @@ pdbs-check.pl <project_dir> --logfile=LOGFILE
 Run this script in the location of the F@H PROJ* directories.
 After running, grep resulting log file (check_FAH-PDBs_PROJ*.log)
 for "WRONG", "ZERO", and "NOT" to look for bad or missing PDBs.
+The script will also attempt to fix the "wrong timestamp" issues.
 
 =over
 
