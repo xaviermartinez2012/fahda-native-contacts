@@ -14,12 +14,13 @@ greater than a max RMSD (when compared to frame0).
            has an RMSD not greater than MAX_RMSD, it is considered native. When this is
            the case, output the simulation's project, run, clone, and final timeframe (ps).
 
-## `extract-native-sim-contacts.pl`
+## `extract_native_sim_contacts.py`
 
 Given a list of native simulations, extract atomic contact data to an outfile.
 
-**Input**: (_a_) list of native simulations (proj/run/clone/last_time_in_ps);
-           (_b_) concatenated all_contact.con.
+**Input**: 
+* (_nst_) <native-sims.lst> - list of native simulations (proj/run/clone/last_time_in_ps)
+* (_jcon_) <joined-cons.con> - concatenated all_contact.con.
 
 **Output**: atomic contacts data from native sims only.
 
