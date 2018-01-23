@@ -1,6 +1,6 @@
 # Native Contact Calculations
 
-## [`find-native-sims.pl`](https://github.com/xaviermartinez2012/fahda-native-contacts/blob/master/native-contacts/find-native-sims.pl)
+## [`find-native-sims.pl`](find-native-sims.pl)
 
 Find native simulations where the structure of each data point has an RMSD no
 greater than a max RMSD (when compared to frame0).
@@ -14,7 +14,7 @@ greater than a max RMSD (when compared to frame0).
            has an RMSD not greater than MAX_RMSD, it is considered native. When this is
            the case, output the simulation's project, run, clone, and final timeframe (ps).
 
-## [`extract_native_sim_contacts.py`](https://github.com/xaviermartinez2012/fahda-native-contacts/blob/master/native-contacts/extract_native_sim_contacts.py)
+## [`extract_native_sim_contacts.py`](extract_native_sim_contacts.py)
 
 Given a list of native simulations, extract atomic contact data to an outfile.
 
