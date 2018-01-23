@@ -22,7 +22,8 @@ Given a list of native simulations, extract atomic contact data to an outfile.
 * (_nst_) <native-sims.lst> - list of native simulations (proj/run/clone/last_time_in_ps)
 * (_jcon_) <joined-cons.con> - concatenated all_contact.con.
 
-**Output**: atomic contacts data from native sims only.
+**Output**: 
+* (_outcon_) <output.con> - atomic contacts data from native sims only.
 
 **Logic**:
 
