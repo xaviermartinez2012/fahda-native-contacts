@@ -2,11 +2,7 @@
 
 Native contact calculations for Folding@Home datasets
 
-## Download
-
-The scripts can be downloaded from [here](https://github.com/sorinlab/fahda-native-contacts/archive/master.zip).
-
-You can also use the `git clone` command.
+## Git Clone Instructions
 
 ```bash
 git clone https://github.com/sorinlab/fahda-native-contacts
@@ -14,6 +10,7 @@ cd fahda-native-contacts
 git submodule init
 git submodule update
 ```
+
 ## Prerequisites 
 
 Use `cpan` or `cpanm` as root to install the following CPAN packages before running the scripts.
