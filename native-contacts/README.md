@@ -1,6 +1,6 @@
 # Native Contact Calculations
 
-## `find-native-sims.pl`
+## [`find-native-sims.pl`](https://github.com/xaviermartinez2012/fahda-native-contacts/blob/master/native-contacts/find-native-sims.pl)
 
 Find native simulations where the structure of each data point has an RMSD no
 greater than a max RMSD (when compared to frame0).
