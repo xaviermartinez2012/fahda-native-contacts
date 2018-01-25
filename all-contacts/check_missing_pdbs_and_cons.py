@@ -1,4 +1,4 @@
-'''Module docstring...'''
+'''Check for missing .pdb/.con files'''
 import os
 import re
 import argparse
@@ -7,7 +7,7 @@ import argparse
 def valid_dir(path):
     '''Check the existence of a directory.'''
     # Used in conjunction with argparse to check that the given parameter
-    # dataset exist.
+    # dataset exists.
     if not os.path.exists(path):
         raise argparse.ArgumentTypeError(
             '\"{}\" does not exist '
