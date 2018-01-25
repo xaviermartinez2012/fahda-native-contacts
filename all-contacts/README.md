@@ -98,9 +98,11 @@ Order of execution
     check_missing_pdbs_and_cons.py <project_dir>
 
     Pipe the output of this script into a log.txt file.
+    
     Ex: python2 check_missing_pdbs_and_cons.py PROJ1797 > error.log
-    After running, grep resulting log file for "ERROR" to
-    look for missing .pdb/.con files.
+    
+    After running, grep resulting log file for "ERROR" to look for 
+    missing .pdb/.con files.
 ```
 
 ## `cons-join.pl`
